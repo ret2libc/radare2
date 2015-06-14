@@ -279,6 +279,17 @@ typedef struct r_graph_t {
 	RList *adjacency;
 } RGraph;
 
+typedef struct r_graph_visitor_t {
+	void (*discover_node)(RGraphNode *n, struct r_graph_visitor_t *vis);
+	void (*finish_node)(RGraphNode *n, struct r_graph_visitor_t *vis);
+	void (*tree_edge)(RGraphNode *u, RGraphNode *v, struct r_graph_visitor_t *vis);
+	void (*back_edge)(RGraphNode *u, RGraphNode *v, struct r_graph_visitor_t *vis);
+	void (*fcross_edge)(RGraphNode *u, RGraphNode *v, struct r_graph_visitor_t *vis);
+	void *data;
+} RGraphVisitor;
+typedef void (*RGraphNodeCallback)(RGraphNode *n, RGraphVisitor *vis);
+typedef void (*RGraphEdgeCallback)(RGraphNode *u, RGraphNode *v, RGraphVisitor *vis);
+
 #ifdef R_API
 R_API RStack *r_stack_new (unsigned int n);
 R_API void r_stack_free (RStack *s);
@@ -311,6 +322,8 @@ R_API void r_graph_add_edge (RGraph *g, RGraphNode *from, RGraphNode *to);
 R_API const RList *r_graph_get_neighbours (RGraph *g, RGraphNode *n);
 R_API RGraphNode *r_graph_nth_neighbour (RGraph *g, RGraphNode *n, int nth);
 R_API int r_graph_adjacent (RGraph *g, RGraphNode *from, RGraphNode *to);
+R_API void r_graph_dfs_node (RGraph *g, RGraphNode *n, RGraphVisitor *vis);
+R_API void r_graph_dfs (RGraph *g, RGraphVisitor *vis);
 
 R_API int r_file_is_abspath(const char *file);
 R_API boolt r_file_truncate (const char *filename, ut64 newsize);

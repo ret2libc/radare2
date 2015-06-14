@@ -2,6 +2,17 @@
 
 #include <r_util.h>
 
+enum {
+	WHITE_COLOR = 0,
+	GRAY_COLOR,
+	BLACK_COLOR
+};
+
+struct edge_t {
+	RGraphNode *from;
+	RGraphNode *to;
+};
+
 struct adjacency_t {
 	unsigned int idx;
 	RList *adj;
@@ -40,6 +51,59 @@ static RList *get_adjacency (RList *l, unsigned int idx) {
 
 	struct adjacency_t *a = (struct adjacency_t *)it->data;
 	return a->adj;
+}
+
+static void dfs_node (RGraph *g, RGraphNode *n, RGraphVisitor *vis, int color[]) {
+	RStack *s;
+	struct edge_t *edg;
+
+	s = r_stack_new (2 * g->n_edges);
+
+	edg = R_NEW (struct edge_t);
+	edg->from = NULL;
+	edg->to = n;
+	r_stack_push (s, edg);
+	while (!r_stack_is_empty (s)) {
+		struct edge_t *cur_edge = (struct edge_t *)r_stack_pop (s);
+		RGraphNode *v, *cur = cur_edge->to, *from = cur_edge->from;
+		const RList *neighbours;
+		RListIter *it;
+
+		free (cur_edge);
+		if (from && cur) {
+			if (color[cur->idx] == WHITE_COLOR && vis->tree_edge)
+				vis->tree_edge (from, cur, vis);
+			else if (color[cur->idx] == GRAY_COLOR && vis->back_edge)
+				vis->back_edge (from, cur, vis);
+			else if (color[cur->idx] == BLACK_COLOR && vis->fcross_edge)
+				vis->fcross_edge (from, cur, vis);
+		} else if (!cur) {
+			if (color[from->idx] != BLACK_COLOR && vis->finish_node)
+				vis->finish_node (from, vis);
+			color[from->idx] = BLACK_COLOR;
+		}
+
+		if (!cur || color[cur->idx] != WHITE_COLOR)
+			continue;
+
+		if (color[cur->idx] == WHITE_COLOR && vis->discover_node)
+			vis->discover_node (cur, vis);
+		color[cur->idx] = GRAY_COLOR;
+
+		edg = R_NEW (struct edge_t);
+		edg->from = cur;
+		edg->to = NULL;
+		r_stack_push (s, edg);
+
+		neighbours = r_graph_get_neighbours (g, cur);
+		r_list_foreach (neighbours, it, v) {
+			edg = R_NEW (struct edge_t);
+			edg->from = cur;
+			edg->to = v;
+			r_stack_push (s, edg);
+		}
+	}
+	r_stack_free (s);
 }
 
 R_API RGraph *r_graph_new () {
@@ -118,4 +182,27 @@ R_API const RList *r_graph_get_nodes (RGraph *g) {
 
 R_API int r_graph_adjacent (RGraph *g, RGraphNode *from, RGraphNode *to) {
 	return r_list_contains (get_adjacency (g->adjacency, from->idx), to) ? R_TRUE : R_FALSE;
+}
+
+R_API void r_graph_dfs_node (RGraph *g, RGraphNode *n, RGraphVisitor *vis) {
+	int *color;
+
+	if (!g || !n || !vis) return;
+	color = R_NEWS0 (int, g->last_index);
+	dfs_node (g, n, vis, color);
+	free (color);
+}
+
+R_API void r_graph_dfs (RGraph *g, RGraphVisitor *vis) {
+	RGraphNode *n;
+	RListIter *it;
+	int *color;
+
+	if (!g || !vis) return;
+	color = R_NEWS0 (int, g->last_index);
+	r_list_foreach (g->nodes, it, n) {
+		 if (color[n->idx] == WHITE_COLOR)
+			 dfs_node (g, n, vis, color);
+	}
+	free (color);
 }
