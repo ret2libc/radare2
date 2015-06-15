@@ -102,6 +102,16 @@ int main(int argc, char **argv) {
 	r_graph_add_edge (g, gn7, gn8);
 	r_graph_add_edge (g, gn8, gn9);
 	check(g->n_edges, 17, "n_edges");
+	r_graph_del_edge (g, gn8, gn9);
+	check(r_graph_adjacent (g, gn8, gn9), R_FALSE, "is_adjacent.0");
+	check(g->n_edges, 16, "n_edges.1");
+	r_graph_add_edge (g, gn9, gn8);
+	check(g->n_edges, 17, "n_edges.2");
+	check(r_graph_adjacent (g, gn9, gn8), R_TRUE, "is_adjacent");
+	r_graph_del_edge (g, gn9, gn8);
+	r_graph_add_edge (g, gn8, gn9);
+	check(r_graph_adjacent (g, gn9, gn8), R_FALSE, "is_adjacent.1");
+	check(r_graph_adjacent (g, gn8, gn9), R_TRUE, "is_adjacent.2");
 
 	RGraphVisitor vis = { 0 };
 	vis.data = r_list_new();

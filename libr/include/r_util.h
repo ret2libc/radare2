@@ -271,6 +271,11 @@ typedef struct r_graph_node_t {
 	RListFree free;
 } RGraphNode;
 
+typedef struct r_graph_edge_t {
+	RGraphNode *from;
+	RGraphNode *to;
+} RGraphEdge;
+
 typedef struct r_graph_t {
 	unsigned int n_nodes;
 	unsigned int n_edges;
@@ -311,17 +316,18 @@ R_API void r_tree_free (RTree *t);
 R_API void r_tree_dfs (RTree *t, RTreeVisitor *vis);
 R_API void r_tree_bfs (RTree *t, RTreeVisitor *vis);
 
-R_API RGraphNode *r_graph_get_node (RGraph *g, unsigned int idx);
-R_API RListIter *r_graph_node_iter (RGraph *g, unsigned int idx);
-R_API const RList *r_graph_get_nodes (RGraph *g);
+R_API RGraphNode *r_graph_get_node (const RGraph *g, unsigned int idx);
+R_API RListIter *r_graph_node_iter (const RGraph *g, unsigned int idx);
+R_API const RList *r_graph_get_nodes (const RGraph *g);
 R_API RGraph *r_graph_new (void);
 R_API void r_graph_free (RGraph* g);
 R_API void r_graph_reset (RGraph *g);
 R_API RGraphNode *r_graph_add_node (RGraph *g, void *data);
 R_API void r_graph_add_edge (RGraph *g, RGraphNode *from, RGraphNode *to);
-R_API const RList *r_graph_get_neighbours (RGraph *g, RGraphNode *n);
-R_API RGraphNode *r_graph_nth_neighbour (RGraph *g, RGraphNode *n, int nth);
-R_API int r_graph_adjacent (RGraph *g, RGraphNode *from, RGraphNode *to);
+R_API void r_graph_del_edge (RGraph *g, RGraphNode *from, RGraphNode *to);
+R_API const RList *r_graph_get_neighbours (const RGraph *g, const RGraphNode *n);
+R_API RGraphNode *r_graph_nth_neighbour (const RGraph *g, const RGraphNode *n, int nth);
+R_API int r_graph_adjacent (const RGraph *g, const RGraphNode *from, const RGraphNode *to);
 R_API void r_graph_dfs_node (RGraph *g, RGraphNode *n, RGraphVisitor *vis);
 R_API void r_graph_dfs (RGraph *g, RGraphVisitor *vis);
 
