@@ -449,6 +449,77 @@ static void minimize_crossings (AGraph *g) {
 	} while (cross_changed);
 }
 
+static RList **compute_left_classes (AGraph *g, int *n_classes) {
+	/* XXX: implement */
+	return NULL;
+}
+
+static void adjust_left_class (AGraph *g, RList **classes, int c) {
+	/* XXX: implement */
+}
+
+static void place_left (AGraph *g, Sdb *res, Sdb *placed) {
+	/* XXX: implement */
+}
+
+static Sdb *compute_pos_left (AGraph *g) {
+	Sdb *res, *placed;
+	RList **classes;
+	int n_classes, i;
+
+	classes = compute_left_classes (g, &n_classes);
+	if (!classes) return NULL;
+
+	res = sdb_new0 ();
+	placed = sdb_new0 ();
+	for (i = 0; i < n_classes; ++i) {
+		RGraphNode *gn;
+		RListIter *it;
+
+		r_list_foreach (classes[i], it, gn) {
+			if (!hash_get_rnode (placed, gn)) {
+				place_left (g, res, placed);
+			}
+		}
+
+		adjust_left_class (g, classes, i);
+	}
+
+	for (i = 0; i < n_classes; ++i) {
+		r_list_free (classes[i]);
+	}
+	free (classes);
+	return res;
+}
+
+static Sdb *compute_pos_right (AGraph *g) {
+	return NULL;
+}
+
+static void place_virtual (AGraph *g) {
+	const RList *nodes;
+	Sdb *xminus, *xplus;
+	RGraphNode *gn;
+	RListIter *it;
+	ANode *n;
+
+	xminus = compute_pos_left (g);
+	if (!xminus)
+		return;
+	xplus = compute_pos_right (g);
+	if (!xplus)
+		goto xplus_err;
+
+	nodes = r_graph_get_nodes (g->graph);
+	graph_foreach_anode (nodes, it, gn, n) {
+		n->x = (hash_get (xminus, gn) + hash_get (xplus, gn)) / 2;
+	}
+
+	sdb_free (xplus);
+xplus_err:
+	sdb_free (xminus);
+}
+
 static void restore_original_edges (AGraph *g) {
 	RListIter *it;
 	RGraphEdge *e;
@@ -508,6 +579,8 @@ static void set_layout_bb(AGraph *g) {
 		g->layers[i].height = rh;
 	}
 
+	place_virtual (g);
+
 	/* vertical align */
 	for (i = 0; i < g->n_layers; ++i) {
 		for (j = 0; j < g->layers[i].n_nodes; ++j) {
@@ -516,17 +589,6 @@ static void set_layout_bb(AGraph *g) {
 			for (k = 0; k < n->layer; ++k) {
 				n->y += g->layers[k].height + VERTICAL_NODE_SPACING;
 			}
-		}
-	}
-
-	/* TODO: x-coordinate assignment algorithm */
-	/* horizontal align */
-	for (i = 0; i < g->n_layers; i++) {
-		nx = (i % 2) * 10;
-		for (j = 0; j < g->layers[i].n_nodes; ++j) {
-			ANode *n = (ANode *)(g->layers[i].nodes[j]->data);
-			n->x = nx;
-			nx += n->w + HORIZONTAL_NODE_SPACING;
 		}
 	}
 
