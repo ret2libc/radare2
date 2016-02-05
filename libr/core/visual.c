@@ -524,23 +524,44 @@ static void setprintmode (RCore *core, int n) {
 
 #define OPDELTA 32
 static int prevopsz (RCore *core, ut64 addr) {
-	ut64 target = addr;
-	ut64 base = target-OPDELTA;
-	int len, ret, i;
-	ut8 buf[OPDELTA*2];
+	ut8 buf[OPDELTA * 2];
+	ut64 target, base;
+	RAnalBlock *bb;
 	RAnalOp op;
+	int len, ret, i;
 
+	// let's see if we can use anal info to get the previous instruction
+	// TODO: look in the current basicblock, then in the current function
+	// and search in all functions only as a last chance, to try to speed
+	// up the process.
+	bb = r_anal_bb_from_offset (core->anal, addr - 1);
+	if (bb) {
+		base = r_anal_bb_opaddr_at (bb, addr - 1);
+		r_core_read_at (core, base, buf, sizeof (buf));
+		ret = r_anal_op (core->anal, &op, base, buf, sizeof (buf));
+		if (!ret) goto fallback;
+		len = op.size;
+		if (len < 1) goto fallback;
+		r_anal_op_fini (&op);
+		return len;
+	}
+
+fallback:
+	// if we anal info didn't help then fallback to the dumb solution.
+	target = addr;
+	base = target - OPDELTA;
 	r_core_read_at (core, base, buf, sizeof (buf));
-	for (i=0; i<sizeof (buf); i++) {
-		ret = r_anal_op (core->anal, &op, base+i,
-			buf+i, sizeof (buf)-i);
+	for (i = 0; i < sizeof (buf); i++) {
+		ret = r_anal_op (core->anal, &op, base + i,
+			buf + i, sizeof (buf) - i);
 		if (!ret) continue;
 		len = op.size;
 		r_anal_op_fini (&op); // XXX
-		if (len<1) continue;
-		i += len-1;
-		if (target == base+i+1)
+		if (len < 1) continue;
+		i += len - 1;
+		if (target == base + i + 1) {
 			return len;
+		}
 	}
 	return 4;
 }
@@ -770,7 +791,7 @@ static void cursor_prevrow(RCore *core) {
 			prev_sz = prevopsz (core, core->offset + roff);
 			prev_roff = 0;
 			if (prev_sz < 1) prev_sz = 1;
-			r_core_seek_delta (core, -prev_sz);
+			r_core_seek (core, core->offset + roff - prev_sz, 1);
 		} else {
 			prev_sz = roff - prev_roff;
 		}
@@ -1279,13 +1300,10 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			cursor_nextrow (core);
 		} else {
 			int times = wheelspeed;
-			if (times<1) times = 1;
+			if (times < 1) times = 1;
 			while (times--) {
 				if (isDisasmPrint(core->printidx)) {
-					RAnalFunction *f = NULL;
-					if (true) {
-						f = r_anal_get_fcn_in (core->anal, core->offset, 0);
-					}
+					RAnalFunction *f = r_anal_get_fcn_in (core->anal, core->offset, 0);
 					if (f && f->folded) {
 						cols = core->offset - f->addr + f->size;
 					} else {
@@ -1293,8 +1311,8 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 						cols = r_asm_disassemble (core->assembler,
 								&op, core->block, 32);
 					}
-					if (cols<1) cols = op.size;
-					if (cols<1) cols = 1;
+					if (cols < 1) cols = op.size;
+					if (cols < 1) cols = 1;
 				}
 				r_core_seek (core, core->offset + cols, 1);
 			}
@@ -1304,7 +1322,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		if (core->print->cur_enabled) {
 			if (isDisasmPrint (core->printidx)) {
 				cols = r_asm_disassemble (core->assembler,
-					&op, core->block+core->print->cur, 32);
+					&op, core->block + core->print->cur, 32);
 				if (cols<1) cols = 1;
 			}
 			if (core->print->ocur==-1) core->print->ocur = core->print->cur;
@@ -1323,7 +1341,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			if (core->screen_bounds && core->screen_bounds >= core->offset) {
 				r_core_seek (core, core->screen_bounds, 1);
 			} else {
-				r_core_seek (core, core->offset+obs, 1);
+				r_core_seek (core, core->offset + obs, 1);
 			}
 		}
 		break;
@@ -1332,13 +1350,13 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			cursor_prevrow (core);
 		} else {
 			int times = wheelspeed;
-			if (times<1) times = 1;
+			if (times < 1) times = 1;
 			while (times--) {
 				if (isDisasmPrint (core->printidx)) {
 					RAnalFunction *f = r_anal_get_fcn_in (core->anal, core->offset, R_ANAL_FCN_TYPE_NULL);
 					if (f && f->folded) {
 						cols = core->offset - f->addr; // + f->size;
-						if (cols<1) {
+						if (cols < 1) {
 							cols = 4;
 						}
 					} else {
@@ -1374,7 +1392,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 				else
 					r_core_seek (core, 0, 1);
 			} else {
-				ut64 at = (core->offset>obs)?core->offset-obs:0;
+				ut64 at = (core->offset > obs) ? core->offset - obs : 0;
 				if (core->offset >obs)
 					r_core_seek (core, at, 1);
 				else
@@ -1385,14 +1403,15 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 	case '[':
 		{
 			int scrcols = r_config_get_i (core->config, "hex.cols");
-			if (scrcols>2)
-				r_config_set_i (core->config, "hex.cols", scrcols-2);
+			if (scrcols > 2) {
+				r_config_set_i (core->config, "hex.cols", scrcols - 2);
+			}
 		}
 		break;
 	case ']':
 		{
 			int scrcols = r_config_get_i (core->config, "hex.cols");
-			r_config_set_i (core->config, "hex.cols", scrcols+2);
+			r_config_set_i (core->config, "hex.cols", scrcols + 2);
 		}
 		break;
 #if 0
