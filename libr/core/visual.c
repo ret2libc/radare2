@@ -85,7 +85,15 @@ static void showcursor(RCore *core, int x) {
 }
 
 // XXX: use core->print->cur_enabled instead of curset/cursor/ocursor
-static int curset = 0, cursor = 0, ocursor=-1;
+//
+// true if the cursor was enabled, false otherwise
+static bool curset = false;
+// offset, in term of bytes, of the selected byte from the first displayed
+// instruction.
+static int cursor = 0;
+// offset, in term of bytes, of the last selected byte from the first displayed
+// instruction, in case a range of bytes were selected.
+static int ocursor = -1;
 static int color = 1;
 static int debug = 1;
 static int zoom = 0;
@@ -278,7 +286,7 @@ static int visual_nkey(RCore *core, int ch) {
 			if (curset) {
 				// dcu 0xaddr
 				r_core_cmdf (core, "dcu 0x%08"PFMT64x, core->offset + cursor);
-				curset = 0;
+				curset = false;
 			}
 		}
 		break;
@@ -322,14 +330,14 @@ static int visual_nkey(RCore *core, int ch) {
 	return ch;
 }
 
-static void setcursor (RCore *core, int cur) {
+static void setcursor (RCore *core, bool cur) {
 	int flags = core->print->flags; // wtf
 	curset = cur;
 	if (curset) flags |= R_PRINT_FLAGS_CURSOR;
 	else flags &= ~(R_PRINT_FLAGS_CURSOR);
-	core->print->cur_enabled = cur;
+	core->print->cur_enabled = cur ? 1 : 0;
 	r_print_set_flags (core->print, flags);
-	core->print->col = curset? 1: 0;
+	core->print->col = curset ? 1 : 0;
 }
 
 static void setdiff (RCore *core) {
@@ -379,7 +387,7 @@ static void findPair (RCore *core) {
 }
 
 static void findNextWord (RCore *core) {
-	int i, d = curset? cursor: 0;
+	int i, d = curset ? cursor : 0;
 	for (i = d+1; i<core->blocksize; i++) {
 		switch (core->block[i]) {
 		case ' ':
@@ -411,7 +419,7 @@ static int isSpace (char ch) {
 }
 
 static void findPrevWord (RCore *core) {
-	int i = curset? cursor: 0;
+	int i = curset ? cursor : 0;
 	while (i>1) {
 		if (isSpace (core->block[i]))
 			i--;
@@ -526,7 +534,7 @@ static void setprintmode (RCore *core, int n) {
 }
 
 #define OPDELTA 32
-static int prevopsz (RCore *core, ut64 addr) {
+static int prevopsz(RCore *core, ut64 addr) {
 	ut8 buf[OPDELTA * 2];
 	ut64 target, base;
 	RAnalBlock *bb;
@@ -709,7 +717,7 @@ char *getcommapath(RCore *core) {
 }
 
 static void visual_comma(RCore *core) {
-	ut64 addr = core->offset + curset? cursor: 0;
+	ut64 addr = core->offset + (curset ? cursor : 0);
 	char *comment, *cwd, *cmtfile;
 	comment = r_meta_get_string (core->anal, R_META_TYPE_COMMENT, addr);
 	cmtfile = r_str_between (comment, ",(", ")");
@@ -897,15 +905,16 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		visual_offset (core);
 		break;
 	case 'A':
-		{ int oc = curset;
-		ut64 off = curset? core->offset+cursor : core->offset;
-		curset = 0;
-		r_core_visual_asm (core, off);
-		curset = oc;
+		{
+			bool oc = curset;
+			ut64 off = curset ? core->offset+cursor : core->offset;
+			curset = false;
+			r_core_visual_asm (core, off);
+			curset = oc;
 		}
 		break;
 	case 'c':
-		setcursor (core, curset?0:1);
+		setcursor (core, !curset);
 		break;
 	case '@':
 		visual_repeat (core);
@@ -1278,9 +1287,11 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 	case 'k':
 		if (curset) {
 			if (isDisasmPrint (core->printidx)) {
+				eprintf("offset = %llx, cursor = %d\n", core->offset, cursor);
 				cols = prevopsz (core, core->offset + cursor);
 			}
 			cursor -= cols;
+			eprintf("new cursor = %d\n", cursor);
 			ocursor = -1;
 			if (cursor < 0) {
 				if (core->offset >= cols) {
@@ -1369,7 +1380,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 				if (curset) {
 					// dcu 0xaddr
 					r_core_cmdf (core, "dcu 0x%08"PFMT64x, core->offset + cursor);
-					curset = 0;
+					curset = false;
 				} else {
 					r_core_cmd (core, "ds", 0);
 					r_core_cmd (core, ".dr*", 0);
@@ -1388,7 +1399,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			if (r_config_get_i (core->config, "cfg.debug")) {
 				if (curset) {
 					r_core_cmd (core, "dcr", 0);
-					curset = 0;
+					curset = false;
 				} else {
 					r_core_cmd (core, "dso", 0);
 					r_core_cmd (core, ".dr*", 0);
@@ -1561,13 +1572,13 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'b':
 		{
- 		ut64 addr = curset? core->offset + cursor : core->offset;
-		RBreakpointItem *bp = r_bp_get_at (core->dbg->bp, addr);
-		if (bp) {
-			r_bp_del (core->dbg->bp, addr);
-		} else {
-			r_bp_add_sw (core->dbg->bp, addr, 1, R_BP_PROT_EXEC);
-		}
+			ut64 addr = curset ? core->offset + cursor : core->offset;
+			RBreakpointItem *bp = r_bp_get_at (core->dbg->bp, addr);
+			if (bp) {
+				r_bp_del (core->dbg->bp, addr);
+			} else {
+				r_bp_add_sw (core->dbg->bp, addr, 1, R_BP_PROT_EXEC);
+			}
 		}
 		break;
 	case 'O':
@@ -1623,7 +1634,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 	case 0x1b:
 	case 'q':
 	case 'Q':
-		setcursor (core, 0);
+		setcursor (core, false);
 		return false;
 	}
 	r_core_block_read (core, 0);
@@ -1677,7 +1688,7 @@ R_API void r_core_visual_title (RCore *core, int color) {
 
 	filename = (core->file && core->file->desc && core->file->desc->name)? core->file->desc->name: "";
 	{ /* get flag with delta */
-		ut64 addr = core->offset + (curset? cursor: 0);
+		ut64 addr = core->offset + (curset ? cursor : 0);
 		RFlagItem *f = r_flag_get_at (core->flags, addr);
 		if (f) {
 			if (f->offset == addr || !f->offset)
