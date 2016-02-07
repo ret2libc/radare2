@@ -759,6 +759,76 @@ static bool isDisasmPrint(int mode) {
 	return (mode == 1 || mode == 2);
 }
 
+static void cur_nextrow(RCore *c) {
+	int cols = c->print->cols;
+	RAsmOp op;
+
+	if (isDisasmPrint (c->printidx)) {
+		// we read the size of the current mnemonic
+		cols = r_asm_disassemble (c->assembler,
+				&op, c->block+cursor, 32);
+		if (cols < 1) cols = 1;
+		cursor += cols; // we move the cursor sizeof the current mnemonic
+		endcursor = -1;
+		if (cursor + c->offset > last_printed_address) {
+			// we seek with the size of the first mnemo
+			cols = r_asm_disassemble (c->assembler,
+					&op, c->block, 32);
+			r_core_seek (c, c->offset + cols, 1);
+			cursor -= cols;
+		}
+	} else { // every other printmode
+		int offscreen;
+
+		if (cols < 1) cols = 1;
+		offscreen = (c->cons->rows - 3) * cols;
+		cursor += cols;
+		endcursor = -1;
+		if (cursor > offscreen) {
+			r_core_seek (c, c->offset + cols, 1);
+			cursor -= cols;
+		}
+	}
+}
+static void cur_prevrow(RCore *c) {
+	int cols = c->print->cols;
+
+	if (isDisasmPrint (c->printidx)) {
+		eprintf("offset = %llx, cursor = %d\n", c->offset, cursor);
+		cols = prevopsz (c, c->offset + cursor);
+	}
+	cursor -= cols;
+	eprintf("new cursor = %d\n", cursor);
+	endcursor = -1;
+	if (cursor < 0) {
+		if (c->offset >= cols) {
+			r_core_seek (c, c->offset - cols, 1);
+			cursor += cols;
+		}
+	}
+}
+static void cur_right(RCore *c) {
+	int offscreen, cols = c->print->cols;
+
+	eprintf("cols = %d, rows = %d\n", cols, c->cons->rows);
+	offscreen = (c->cons->rows - 3) * cols;
+	cursor++;
+	endcursor = -1;
+	if (cursor > offscreen) {
+		r_core_seek (c, c->offset + cols, 1);
+		cursor -= cols;
+	}
+}
+static void cur_left(RCore *c) {
+	int cols = c->print->cols;
+	cursor--;
+	endcursor = -1;
+	if (cursor < 0) {
+		r_core_seek_delta (c, -cols);
+		cursor++;
+	}
+}
+
 R_API int r_core_visual_cmd(RCore *core, int ch) {
 	RAsmOp op;
 	ut64 offset = core->offset;
@@ -1167,12 +1237,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'h':
 		if (curset) {
-			cursor--;
-			endcursor = -1;
-			if (cursor < 0) {
-				r_core_seek_delta (core, -cols);
-				cursor ++;
-			}
+			cur_left (core);
 		} else r_core_seek_delta (core, -1);
 		break;
 	case 'H':
@@ -1188,15 +1253,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'l':
 		if (curset) {
-			cursor++;
-			endcursor = -1;
-			{
-				int offscreen = (core->cons->rows-3)*cols;
-				if (cursor>=offscreen) {
-					r_core_seek (core, core->offset+cols, 1);
-					cursor-=cols;
-				}
-			}
+			cur_right (core);
 		} else r_core_seek_delta (core, 1);
 		break;
 	case 'L':
@@ -1213,30 +1270,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'j':
 		if (curset) {
-			if (isDisasmPrint (core->printidx)) {
-				// we read the size of the current mnemonic
-				cols = r_asm_disassemble (core->assembler,
-					&op, core->block+cursor, 32);
-				if (cols < 1) cols = 1;
-				cursor += cols; // we move the cursor sizeof the current mnemonic
-				endcursor = -1;
-				if (cursor + core->offset > last_printed_address) {
-					// we seek with the size of the first mnemo
-					cols = r_asm_disassemble (core->assembler,
-							&op, core->block, 32);
-					r_core_seek (core, core->offset + cols, 1);
-					cursor -= cols;
-				}
-			} else { // every other printmode
-				if (cols < 1) cols = 1;
-				cursor += cols;
-				endcursor = -1;
-				offscreen = (core->cons->rows - 3) * cols;
-				if (cursor > offscreen) {
-					r_core_seek (core, core->offset + cols, 1);
-					cursor -= cols;
-				}
-			}
+			cur_nextrow (core);
 		} else {
 			int times = wheelspeed;
 			if (times < 1) times = 1;
@@ -1286,19 +1320,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'k':
 		if (curset) {
-			if (isDisasmPrint (core->printidx)) {
-				eprintf("offset = %llx, cursor = %d\n", core->offset, cursor);
-				cols = prevopsz (core, core->offset + cursor);
-			}
-			cursor -= cols;
-			eprintf("new cursor = %d\n", cursor);
-			endcursor = -1;
-			if (cursor < 0) {
-				if (core->offset >= cols) {
-					r_core_seek (core, core->offset - cols, 1);
-					cursor += cols;
-				}
-			}
+			cur_prevrow (core);
 		} else {
 			int times = wheelspeed;
 			if (times < 1) times = 1;

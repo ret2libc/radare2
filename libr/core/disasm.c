@@ -2547,6 +2547,7 @@ toro:
 			if (skip_bytes && ds->midflags == R_MIDFLAGS_SHOW)
 				ds->at += skip_bytes;
 		}
+		r_print_set_rowoff (core->print, ds->lines, ds->at - ds->addr);
 		handle_show_flags_option (core, ds);
 		if (skip_bytes && ds->midflags == R_MIDFLAGS_SHOW)
 			ds->at -= skip_bytes;
@@ -2664,6 +2665,7 @@ toro:
 		r_config_set_i (core->config, "asm.bits", ds->oldbits);
 		ds->oldbits = 0;
 	}
+	r_print_set_rowoff (core->print, ds->lines, UT32_MAX);
 	// TODO: this should be called from deinit_ds()
 	r_anal_op_fini (&ds->analop);
 	// TODO: this too (must review)
