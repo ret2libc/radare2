@@ -1346,7 +1346,7 @@ R_API int r_print_row_at_off (RPrint *p, ut32 offset) {
 	int i = 0;
 	ut32 tt;
 
-	while ((tt = r_print_rowoff (p, i)) != UT32_MAX && tt < offset) {
+	while ((tt = r_print_rowoff (p, i)) != UT32_MAX && tt <= offset) {
 		i++;
 	}
 	return tt != UT32_MAX ? i - 1 : -1;
