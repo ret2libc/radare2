@@ -727,6 +727,108 @@ static bool isDisasmPrint(int mode) {
 	return (mode == 1 || mode == 2);
 }
 
+static void cursor_nextrow(RCore *core) {
+	RPrint *p = core->print;
+	ut32 roff, next_roff;
+	int row, sz, delta;
+	RAsmOp op;
+
+	p->ocur = -1;
+	if (p->row_offsets != NULL) {
+		// FIXME: cache the current row
+		row = r_print_row_at_off (p, p->cur);
+		roff = r_print_rowoff (p, row);
+		next_roff = r_print_rowoff (p, row + 1);
+		if (roff == -1 || next_roff == -1) {
+			// TODO: just use r_asm_disassemble to get the size
+			return;
+		}
+		sz = r_asm_disassemble (core->assembler, &op,
+				core->block + next_roff, 32);
+		if (sz < 1) sz = 1;
+		delta = p->cur - roff;
+		p->cur = next_roff + R_MIN (delta, sz - 1);
+	} else {
+		p->cur += R_MAX (1, p->cols);
+	}
+}
+
+static void cursor_prevrow(RCore *core) {
+	RPrint *p = core->print;
+	int row;
+	ut32 roff, prev_roff;
+
+	p->ocur = -1;
+	if (p->row_offsets != NULL) {
+		int delta, prev_sz;
+
+		row = r_print_row_at_off (p, p->cur);
+		roff = r_print_rowoff (p, row);
+		prev_roff = row > 0 ? r_print_rowoff (p, row - 1) : UT32_MAX;
+		delta = p->cur - roff;
+		if (prev_roff == UT32_MAX) {
+			prev_sz = prevopsz (core, core->offset + roff);
+			prev_roff = 0;
+			if (prev_sz < 1) prev_sz = 1;
+			r_core_seek_delta (core, -prev_sz);
+		} else {
+			prev_sz = roff - prev_roff;
+		}
+		p->cur = prev_roff + R_MIN (delta, prev_sz - 1);
+	} else {
+		p->cur -= p->cols;
+	}
+}
+
+static void cursor_left(RCore *core) {
+	RPrint *p = core->print;
+	p->cur--;
+	p->ocur = -1;
+}
+
+static void cursor_right(RCore *core) {
+	RPrint *p = core->print;
+	p->cur++;
+	p->ocur = -1;
+}
+
+static bool fix_cursor_down (RCore *core) {
+	RPrint *p = core->print;
+	int offscreen = (core->cons->rows - 3) * p->cols;
+
+	if (core->screen_bounds > 1 && p->cur + core->offset >= core->screen_bounds) {
+		RAsmOp op;
+		int sz;
+
+		sz = r_asm_disassemble (core->assembler,
+				&op, core->block, 32);
+		if (sz < 1) sz = 1;
+		r_core_seek (core, core->offset + sz, 1);
+		p->cur -= sz;
+		return true;
+	} else if (core->print->cur >= offscreen) {
+		r_core_seek (core, core->offset + p->cols, 1);
+		p->cur -= p->cols;
+	}
+	return false;
+}
+
+static bool fix_cursor_up (RCore *core) {
+	RPrint *p = core->print;
+
+	if (p->cur < 0) {
+		int sz = p->cols;
+
+		if (isDisasmPrint (core->printidx)) {
+			sz = prevopsz (core, core->offset + p->cur);
+			if (sz < 1) sz = 1;
+		}
+		r_core_seek_delta (core, -sz);
+		p->cur += sz;
+	}
+	return false;
+}
+
 R_API int r_core_visual_cmd(RCore *core, int ch) {
 	RAsmOp op;
 	ut64 offset = core->offset;
@@ -1141,12 +1243,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'h':
 		if (core->print->cur_enabled) {
-			core->print->cur--;
-			core->print->ocur=-1;
-			if (core->print->cur<0) {
-				r_core_seek_delta (core, -cols);
-				core->print->cur ++;
-			}
+			cursor_left (core);
 		} else r_core_seek_delta (core, -1);
 		break;
 	case 'H':
@@ -1162,15 +1259,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'l':
 		if (core->print->cur_enabled) {
-			core->print->cur++;
-			core->print->ocur=-1;
-			{
-				int offscreen = (core->cons->rows-3)*cols;
-				if (core->print->cur>=offscreen) {
-					r_core_seek (core, core->offset+cols, 1);
-					core->print->cur-=cols;
-				}
-			}
+			cursor_right (core);
 		} else r_core_seek_delta (core, 1);
 		break;
 	case 'L':
@@ -1187,30 +1276,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'j':
 		if (core->print->cur_enabled) {
-			if (isDisasmPrint (core->printidx)) {
-				// we read the size of the current mnemonic
-				cols = r_asm_disassemble (core->assembler,
-					&op, core->block + core->print->cur, 32);
-				if (cols < 1) cols = 1;
-				core->print->cur += cols; // we move the core->print->cur sizeof the current mnemonic
-				core->print->ocur = -1;
-				if (core->print->cur + core->offset >= core->screen_bounds) {
-					// we seek with the size of the first mnemo
-					cols = r_asm_disassemble (core->assembler,
-							&op, core->block, 32);
-					r_core_seek (core, core->offset + cols, 1);
-					core->print->cur -= cols;
-				}
-			} else { // every other printmode
-				if (cols<1) cols = 1;
-				core->print->cur += cols;
-				core->print->ocur = -1;
-				offscreen = (core->cons->rows - 3) * cols;
-				if (core->print->cur > offscreen) {
-					r_core_seek (core, core->offset+cols, 1);
-					core->print->cur -= cols;
-				}
-			}
+			cursor_nextrow (core);
 		} else {
 			int times = wheelspeed;
 			if (times<1) times = 1;
@@ -1263,17 +1329,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case 'k':
 		if (core->print->cur_enabled) {
-			if (isDisasmPrint (core->printidx)) {
-				cols = prevopsz (core, core->offset + core->print->cur);
-			}
-			core->print->cur -= cols;
-			core->print->ocur = -1;
-			if (core->print->cur<0) {
-				if (core->offset >= cols) {
-					r_core_seek (core, core->offset - cols, 1);
-					core->print->cur += cols;
-				}
-			}
+			cursor_prevrow (core);
 		} else {
 			int times = wheelspeed;
 			if (times<1) times = 1;
@@ -1810,6 +1866,7 @@ R_API int r_core_visual(RCore *core, const char *input) {
 	const char *cmdprompt, *teefile;
 	ut64 scrseek;
 	int wheel, flags, ch;
+	bool skip;
 
 	if (r_cons_get_size (&ch)<1 || ch<1) {
 		eprintf ("Cannot create Visual context. Use scr.fix_{columns|rows}\n");
@@ -1833,6 +1890,13 @@ R_API int r_core_visual(RCore *core, const char *input) {
 
 	core->print->flags |= R_PRINT_FLAGS_ADDRMOD;
 	do {
+		skip = false;
+		if (core->print->cur_enabled) {
+			// update the cursor when it's not visible anymore
+			skip |= fix_cursor_down (core);
+			skip |= fix_cursor_up (core);
+		}
+
 		if (core->printidx == 2) {
 			static char debugstr[512];
 			const char *cmdvhex = r_config_get (core->config, "cmd.stack");
@@ -1881,18 +1945,23 @@ R_API int r_core_visual(RCore *core, const char *input) {
 		r_print_set_flags (core->print, core->print->flags);
 		scrseek = r_num_math (core->num,
 			r_config_get (core->config, "scr.seek"));
-		if (scrseek != 0LL)
+		if (scrseek != 0LL) {
 			r_core_seek (core, scrseek, 1);
-		if (debug)
+		}
+		if (debug) {
 			r_core_cmd (core, ".dr*", 0);
+		}
 		cmdprompt = r_config_get (core->config, "cmd.vprompt");
-		if (cmdprompt && *cmdprompt)
+		if (cmdprompt && *cmdprompt) {
 			r_core_cmd (core, cmdprompt, 0);
+		}
 		r_core_visual_refresh (core);
-		ch = r_cons_readchar ();
-		r_core_visual_show_char (core, ch);
-		if (ch==-1 || ch==4) break; // error or eof
-	} while (r_core_visual_cmd (core, ch));
+		if (!skip) {
+			ch = r_cons_readchar ();
+			r_core_visual_show_char (core, ch);
+			if (ch == -1 || ch == 4) break; // error or eof
+		}
+	} while (skip || r_core_visual_cmd (core, ch));
 
 	r_cons_enable_mouse (false);
 	if (color)
