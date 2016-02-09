@@ -761,7 +761,8 @@ static void cursor_nextrow(RCore *core) {
 		roff = r_print_rowoff (p, row);
 		next_roff = r_print_rowoff (p, row + 1);
 		if (roff == -1 || next_roff == -1) {
-			// TODO: just use r_asm_disassemble to get the size
+			// it should never happen
+			p->cur++;
 			return;
 		}
 		sz = r_asm_disassemble (core->assembler, &op,
@@ -783,6 +784,7 @@ static void cursor_prevrow(RCore *core) {
 	if (p->row_offsets != NULL) {
 		int delta, prev_sz;
 
+		// FIXME: cache the current row
 		row = r_print_row_at_off (p, p->cur);
 		roff = r_print_rowoff (p, row);
 		prev_roff = row > 0 ? r_print_rowoff (p, row - 1) : UT32_MAX;
@@ -816,8 +818,10 @@ static void cursor_right(RCore *core) {
 static bool fix_cursor_down (RCore *core) {
 	RPrint *p = core->print;
 	int offscreen = (core->cons->rows - 3) * p->cols;
+	bool cur_in_bounds = p->cur + core->offset >= core->screen_bounds;
+	bool off_visible = core->offset < core->screen_bounds;
 
-	if (core->screen_bounds > 1 && p->cur + core->offset >= core->screen_bounds) {
+	if (core->screen_bounds > 1 && (cur_in_bounds || !off_visible)) {
 		RAsmOp op;
 		int sz;
 
@@ -825,7 +829,7 @@ static bool fix_cursor_down (RCore *core) {
 				&op, core->block, 32);
 		if (sz < 1) sz = 1;
 		r_core_seek (core, core->offset + sz, 1);
-		p->cur -= sz;
+		p->cur = R_MAX (p->cur - sz, 0);
 		return true;
 	} else if (core->print->cur >= offscreen) {
 		r_core_seek (core, core->offset + p->cols, 1);
@@ -1877,7 +1881,11 @@ static void r_core_visual_refresh (RCore *core) {
 	blocksize = core->num->value? core->num->value : core->blocksize;
 
 	/* this is why there's flickering */
-	r_cons_visual_flush ();
+	if (core->print->vflush) {
+		r_cons_visual_flush ();
+	} else {
+		r_cons_reset ();
+	}
 	core->cons->blankline = true;
 }
 
@@ -1974,6 +1982,7 @@ R_API int r_core_visual(RCore *core, const char *input) {
 		if (cmdprompt && *cmdprompt) {
 			r_core_cmd (core, cmdprompt, 0);
 		}
+		core->print->vflush = !skip;
 		r_core_visual_refresh (core);
 		if (!skip) {
 			ch = r_cons_readchar ();
