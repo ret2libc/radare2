@@ -759,12 +759,9 @@ static void cursor_nextrow(RCore *core) {
 		// FIXME: cache the current row
 		row = r_print_row_at_off (p, p->cur);
 		roff = r_print_rowoff (p, row);
+		if (roff == -1) return;
 		next_roff = r_print_rowoff (p, row + 1);
-		if (roff == -1 || next_roff == -1) {
-			// it should never happen
-			p->cur++;
-			return;
-		}
+		if (next_roff == -1) return;
 		sz = r_asm_disassemble (core->assembler, &op,
 				core->block + next_roff, 32);
 		if (sz < 1) sz = 1;
@@ -787,6 +784,7 @@ static void cursor_prevrow(RCore *core) {
 		// FIXME: cache the current row
 		row = r_print_row_at_off (p, p->cur);
 		roff = r_print_rowoff (p, row);
+		if (roff == UT32_MAX) return;
 		prev_roff = row > 0 ? r_print_rowoff (p, row - 1) : UT32_MAX;
 		delta = p->cur - roff;
 		if (prev_roff == UT32_MAX) {
@@ -826,7 +824,7 @@ static bool fix_cursor_down (RCore *core) {
 		int sz;
 
 		sz = r_asm_disassemble (core->assembler,
-				&op, core->block, 32);
+			&op, core->block, 32);
 		if (sz < 1) sz = 1;
 		r_core_seek (core, core->offset + sz, 1);
 		p->cur = R_MAX (p->cur - sz, 0);
