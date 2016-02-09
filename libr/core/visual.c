@@ -1866,11 +1866,14 @@ static void r_core_visual_refresh (RCore *core) {
 		r_core_visual_title (core, color);
 	}
 
-	core->screen_bounds = 1LL;
 	vcmd = r_config_get (core->config, "cmd.visual");
 	if (vcmd && *vcmd) {
+		// disable screen bounds when it's a user-defined command
+		// because it can cause some issues
+		core->screen_bounds = 0;
 		r_core_cmd (core, vcmd, 0);
 	} else {
+		core->screen_bounds = 1LL;
 		if (zoom) r_core_cmd0 (core, "pz");
 		else r_core_cmd0 (core, printfmt[PIDX]);
 	}
