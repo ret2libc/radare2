@@ -306,11 +306,15 @@ R_API int r_flag_rename(RFlag *f, RFlagItem *item, const char *name) {
  * returns true if the item is successfully unset, false otherwise. */
 R_API int r_flag_unset(RFlag *f, RFlagItem *item) {
 	RList *fs_off = r_hashtable64_lookup (f->ht_off, XOROFF (item->offset));
+	RListFree orig = f->flags->free;
+
 	if (fs_off) {
 		r_list_delete_data (fs_off, item);
 	}
 	r_hashtable64_remove (f->ht_name, item->namehash);
+	f->flags->free = NULL;
 	r_list_delete_data (f->flags, item);
+	f->flags->free = orig;
 	return true;
 }
 
