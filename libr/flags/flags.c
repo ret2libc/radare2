@@ -221,7 +221,10 @@ R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 			item->size = size;
 			return item;
 		}
+		// TODO: we may just remove the item from the ht_off hashmap
+		//       and avoid freeing the item
 		r_flag_unset (f, item);
+		r_flag_item_free (item);
 	}
 
 	item = R_NEW0 (RFlagItem);
