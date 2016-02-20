@@ -210,7 +210,7 @@ R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 	RListIter *iter2 = NULL;
 	RListIter *iter22 = NULL;
 	RFlagItem *item2 = NULL;
-	RList *list2;
+	RList *list;
 
 	/* contract fail */
 	if (!name || !*name) return NULL;
@@ -221,63 +221,27 @@ R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 			item->size = size;
 			return item;
 		}
-		/* remove old entry */
-		RList *list2 = r_hashtable64_lookup (f->ht_off, XOROFF(item->offset));
-		if (list2) {
-			/* No _safe loop necessary because we break immediately after the delete. */
-			r_list_foreach_safe (list2, iter2, iter22, item2) {
-				if (item->namehash != item2->namehash)
-					continue;
-				if (item->offset == item2->offset) {
-					// r_list_delete (list2, iter2);
-					// delete without freeing contents
-					//list2->free = NULL;
-					r_list_split_iter (list2, iter2);
-					if (r_list_empty (list2)) {
-						r_hashtable64_remove (f->ht_off, item2->offset);
-						r_hashtable64_insert (f->ht_off, item2->offset, NULL);
-						//r_list_free (list2);
-						//list2 = NULL;
-					}
-					break;
-				}
-			}
-		}
-
-		/* update new entry */
-		item->offset = off;
-		item->size = size;
-
-		RList *lol = r_hashtable64_lookup (f->ht_off, XOROFF(off));
-		if (!lol) {
-			lol = r_list_new ();
-			r_hashtable64_remove (f->ht_off, XOROFF(off));
-			r_hashtable64_insert (f->ht_off, XOROFF(off), lol);
-		}
-		if (lol) {
-			r_list_append (lol, item);
-		}
-	} else {
-		item = R_NEW0 (RFlagItem);
-		if (!r_flag_item_set_name (item, name, NULL)) {
-			eprintf ("Invalid flag name '%s'.\n", name);
-			free (item);
-			return NULL;
-		}
-		item->space = f->space_idx;
-		r_list_append (f->flags, item);
-		item->offset = off + f->base;
-		item->size = size;
-
-		r_hashtable64_insert (f->ht_name, item->namehash, item);
-
-		list2 = r_hashtable64_lookup (f->ht_off, XOROFF(off));
-		if (list2 == NULL) {
-			list2 = r_list_new ();
-			r_hashtable64_insert (f->ht_off, XOROFF(off), list2);
-		}
-		r_list_append (list2, item);
+		r_flag_unset (f, item);
 	}
+
+	item = R_NEW0 (RFlagItem);
+	if (!r_flag_item_set_name (item, name, NULL)) {
+		eprintf ("Invalid flag name '%s'.\n", name);
+		free (item);
+		return NULL;
+	}
+	item->space = f->space_idx;
+	r_list_append (f->flags, item);
+	item->offset = off + f->base;
+	item->size = size;
+
+	r_hashtable64_insert (f->ht_name, item->namehash, item);
+	list = r_hashtable64_lookup (f->ht_off, XOROFF(off));
+	if (list == NULL) {
+		list = r_list_new ();
+		r_hashtable64_insert (f->ht_off, XOROFF(off), list);
+	}
+	r_list_append (list, item);
 	return item;
 }
 
@@ -296,17 +260,12 @@ R_API int r_flag_item_set_name(RFlagItem *item, const char *name, const char *re
 
 	/* realname is the original name of the flag */
 	item->realname = strdup (realname);
-	if (!item->realname) {
-		return false;
-	}
+	if (!item->realname) return false;
 	item->namehash = r_str_hash64 (item->realname);
 
 	/* the name contains only printable chars that doesn't conflict with r2 shell */
 	item->name = strdup (name);
-	if (!item->name) {
-		free (item->realname);
-		return false;
-	}
+	if (!item->name) goto err_name;
 	r_str_chop (item->name);
 	r_name_filter (item->name, 0); // TODO: name_filter should be chopping already
 
@@ -316,6 +275,10 @@ R_API int r_flag_item_set_name(RFlagItem *item, const char *name, const char *re
 		item->name = item->realname;
 	}
 	return true;
+
+err_name:
+	free (item->realname);
+	return false;
 }
 
 /* change the name of a flag item.
