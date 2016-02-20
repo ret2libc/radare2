@@ -205,7 +205,7 @@ R_API char *r_flag_get_liststr(RFlag *f, ut64 off) {
  * "name" as the name of the flag, it will be placed at offset "off" with size
  * "size". The realname of the flag item will be the same as the name.
  * NULL is returned in case of any errors during the process. */
-R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size, int dup) {
+R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 	RFlagItem *item = NULL;
 	RListIter *iter2 = NULL;
 	RListIter *iter22 = NULL;
@@ -421,7 +421,7 @@ R_API int r_flag_relocate(RFlag *f, ut64 off, ut64 off_mask, ut64 to) {
 R_API int r_flag_move(RFlag *f, ut64 at, ut64 to) {
 	RFlagItem *item = r_flag_get_i (f, at);
 	if (item) {
-		r_flag_set (f, item->name, to, item->size, 0);
+		r_flag_set (f, item->name, to, item->size);
 		return true;
 	}
 	return false;
@@ -431,15 +431,15 @@ R_API int r_flag_move(RFlag *f, ut64 at, ut64 to) {
 int main () {
 	RFlagItem *i;
 	RFlag *f = r_flag_new ();
-	r_flag_set (f, "rip", 0xfff333999000LL, 1, 0);
-	r_flag_set (f, "rip", 0xfff333999002LL, 1, 0);
+	r_flag_set (f, "rip", 0xfff333999000LL, 1);
+	r_flag_set (f, "rip", 0xfff333999002LL, 1);
 	r_flag_unset (f, "rip", NULL);
-	r_flag_set (f, "rip", 3, 4, 0);
-	r_flag_set (f, "rip", 4, 4, 0);
-	r_flag_set (f, "corwp", 300, 4, 0);
-	r_flag_set (f, "barp", 300, 4, 0);
-	r_flag_set (f, "rip", 3, 4, 0);
-	r_flag_set (f, "rip", 4, 4, 0);
+	r_flag_set (f, "rip", 3, 4);
+	r_flag_set (f, "rip", 4, 4);
+	r_flag_set (f, "corwp", 300, 4);
+	r_flag_set (f, "barp", 300, 4);
+	r_flag_set (f, "rip", 3, 4);
+	r_flag_set (f, "rip", 4, 4);
 
 	i = r_flag_get (f, "rip");
 	if (i) printf ("nRIP: %p %llx\n", i, i->offset);
