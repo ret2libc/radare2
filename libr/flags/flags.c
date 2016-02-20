@@ -171,15 +171,14 @@ R_API RFlagItem *r_flag_get_at(RFlag *f, ut64 off) {
 	RListIter *iter;
 
 	r_list_foreach (f->flags, iter, item) {
-		if (f->space_strict && IS_IN_SPACE (f, item))
-			continue;
-		if (item->offset == off)
+		if (f->space_strict && IS_IN_SPACE (f, item)) continue;
+		if (item->offset == off) {
 			return item;
+		}
 		if (off > item->offset) {
-			if (nice)  {
-				if (nice->offset < item->offset)
-					nice = item;
-			} else nice = item;
+			if (!nice || nice->offset < item->offset) {
+				nice = item;
+			}
 		}
 	}
 	return nice;
@@ -453,19 +452,14 @@ int main () {
 #endif
 
 R_API const char *r_flag_color(RFlag *f, RFlagItem *it, const char *color) {
-	if (!f || !it)
-		return NULL;
-	if (!color)
-		return it->color;
+	if (!f || !it) return NULL;
+	if (!color) return it->color;
 	free (it->color);
-	if (*color)
-		it->color = strdup (color);
-	else it->color = NULL;
+	it->color = *color ? strdup (color) : NULL;
 	return it->color;
 }
 
 // BIND
-
 R_API int r_flag_bind(RFlag *f, RFlagBind *fb) {
 	fb->f = f;
 	fb->get = r_flag_get;
