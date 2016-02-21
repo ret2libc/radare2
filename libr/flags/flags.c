@@ -305,6 +305,9 @@ R_API int r_flag_unset(RFlag *f, RFlagItem *item) {
 
 	if (fs_off) {
 		r_list_delete_data (fs_off, item);
+		if (r_list_empty (fs_off)) {
+			r_hashtable64_remove (f->ht_off, XOROFF (item->offset));
+		}
 	}
 	r_hashtable64_remove (f->ht_name, item->namehash);
 	f->flags->free = NULL;
