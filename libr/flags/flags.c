@@ -297,12 +297,16 @@ R_API int r_flag_item_set_name(RFlagItem *item, const char *name) {
  * true is returned if everything works well, false otherwise */
 R_API int r_flag_rename(RFlag *f, RFlagItem *item, const char *name) {
 	RFlagItem *p;
+	ut64 hash;
 
 	if (!f || !item || !name || !*name) return false;
-	p = r_hashtable64_lookup (f->ht_name, r_str_hash64 (name));
+	hash = r_str_hash64 (name);
+	p = r_hashtable64_lookup (f->ht_name, hash);
 	if (p) return false;
 	if (!set_name (item, name)) return false;
-	r_hashtable64_remove (f->ht_name, r_str_hash64 (item->name));
+	free (item->realname);
+	item->realname = item->name;
+	r_hashtable64_remove (f->ht_name, hash);
 	r_hashtable64_insert (f->ht_name, item->namehash, item);
 	return true;
 }
