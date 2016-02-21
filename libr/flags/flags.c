@@ -207,9 +207,6 @@ R_API char *r_flag_get_liststr(RFlag *f, ut64 off) {
  * NULL is returned in case of any errors during the process. */
 R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 	RFlagItem *item = NULL;
-	RListIter *iter2 = NULL;
-	RListIter *iter22 = NULL;
-	RFlagItem *item2 = NULL;
 	RList *list;
 
 	/* contract fail */
@@ -221,13 +218,11 @@ R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 			item->size = size;
 			return item;
 		}
-		// TODO: we may just remove the item from the ht_off hashmap
-		//       and avoid freeing the item
 		r_flag_unset (f, item);
-		r_flag_item_free (item);
+	} else {
+		item = R_NEW0 (RFlagItem);
 	}
 
-	item = R_NEW0 (RFlagItem);
 	if (!r_flag_item_set_name (item, name, NULL)) {
 		eprintf ("Invalid flag name '%s'.\n", name);
 		free (item);
@@ -264,11 +259,11 @@ R_API int r_flag_item_set_name(RFlagItem *item, const char *name, const char *re
 	/* realname is the original name of the flag */
 	item->realname = strdup (realname);
 	if (!item->realname) return false;
-	item->namehash = r_str_hash64 (item->realname);
 
 	/* the name contains only printable chars that doesn't conflict with r2 shell */
 	item->name = strdup (name);
 	if (!item->name) goto err_name;
+	item->namehash = r_str_hash64 (item->name);
 	r_str_chop (item->name);
 	r_name_filter (item->name, 0); // TODO: name_filter should be chopping already
 
@@ -291,7 +286,7 @@ R_API int r_flag_rename(RFlag *f, RFlagItem *item, const char *name) {
 	RFlagItem *p;
 
 	if (!f || !item || !name || !*name) return false;
-	hash = r_str_hash64 (item->realname);
+	hash = r_str_hash64 (item->name);
 	p = r_hashtable64_lookup (f->ht_name, hash);
 	if (p) {
 		RFlagItem *item = p;
