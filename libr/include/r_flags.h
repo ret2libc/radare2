@@ -73,7 +73,7 @@ R_API int r_flag_unset_off(RFlag *f, ut64 addr);
 R_API void r_flag_unset_all (RFlag *f);
 R_API RFlagItem *r_flag_set(RFlag *fo, const char *name, ut64 addr, ut32 size);
 R_API int r_flag_sort(RFlag *f, int namesort);
-R_API int r_flag_item_set_name(RFlagItem *item, const char *name, const char *realname);
+R_API int r_flag_item_set_name(RFlagItem *item, const char *name);
 R_API void r_flag_item_free (RFlagItem *item);
 R_API void r_flag_item_set_comment(RFlagItem *item, const char *comment);
 R_API void r_flag_item_set_realname(RFlagItem *item, const char *realname);
