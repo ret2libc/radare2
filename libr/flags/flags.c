@@ -15,6 +15,16 @@ R_LIB_VERSION(r_flag);
 #define ISNULLSTR(x) (!(x) || !*(x))
 #define IS_IN_SPACE(f, i) ((f)->space_idx != -1 && (i)->space != (f)->space_idx)
 
+static void remove_offsetmap(RFlag *f, RFlagItem *item) {
+	RList *fs_off = r_hashtable64_lookup (f->ht_off, XOROFF (item->offset));
+	if (fs_off) {
+		r_list_delete_data (fs_off, item);
+		if (r_list_empty (fs_off)) {
+			r_hashtable64_remove (f->ht_off, XOROFF (item->offset));
+		}
+	}
+}
+
 R_API RFlag * r_flag_new() {
 	RFlag *f;
 	int i;
@@ -218,22 +228,22 @@ R_API RFlagItem *r_flag_set(RFlag *f, const char *name, ut64 off, ut32 size) {
 			item->size = size;
 			return item;
 		}
-		r_flag_unset (f, item);
+		remove_offsetmap (f, item);
 	} else {
 		item = R_NEW0 (RFlagItem);
+		if (!r_flag_item_set_name (item, name)) {
+			eprintf ("Invalid flag name '%s'.\n", name);
+			free (item);
+			return NULL;
+		}
+		r_hashtable64_insert (f->ht_name, item->namehash, item);
+		r_list_append (f->flags, item);
 	}
 
-	if (!r_flag_item_set_name (item, name)) {
-		eprintf ("Invalid flag name '%s'.\n", name);
-		free (item);
-		return NULL;
-	}
 	item->space = f->space_idx;
-	r_list_append (f->flags, item);
 	item->offset = off + f->base;
 	item->size = size;
 
-	r_hashtable64_insert (f->ht_name, item->namehash, item);
 	list = r_hashtable64_lookup (f->ht_off, XOROFF(off));
 	if (list == NULL) {
 		list = r_list_new ();
@@ -300,15 +310,8 @@ R_API int r_flag_rename(RFlag *f, RFlagItem *item, const char *name) {
 /* unset the given flag item.
  * returns true if the item is successfully unset, false otherwise. */
 R_API int r_flag_unset(RFlag *f, RFlagItem *item) {
-	RList *fs_off = r_hashtable64_lookup (f->ht_off, XOROFF (item->offset));
 	RListFree orig = f->flags->free;
-
-	if (fs_off) {
-		r_list_delete_data (fs_off, item);
-		if (r_list_empty (fs_off)) {
-			r_hashtable64_remove (f->ht_off, XOROFF (item->offset));
-		}
-	}
+	remove_offsetmap (f, item);
 	r_hashtable64_remove (f->ht_name, item->namehash);
 	f->flags->free = NULL;
 	r_list_delete_data (f->flags, item);
