@@ -251,6 +251,16 @@ R_API void r_flag_item_set_comment(RFlagItem *item, const char *comment) {
 	}
 }
 
+/* add/replace/remove the realname of a flag item */
+R_API void r_flag_item_set_realname(RFlagItem *item, const char *realname) {
+	if (item) {
+		if (item->realname != item->name) {
+			free (item->realname);
+		}
+		item->realname = ISNULLSTR (realname) ? NULL : strdup (realname);
+	}
+}
+
 /* add/replace/remove the name and/or the realname of a flag item */
 R_API int r_flag_item_set_name(RFlagItem *item, const char *name, const char *realname) {
 	if (!item || !r_name_check (name)) return false;
