@@ -1,7 +1,6 @@
 /* radare - LGPL - Copyright 2008-2015 - nibble, pancake */
 
-// TODO: rename to r_anal_meta_get() ??
-#if 0
+/*
     TODO
     ====
     - handle sync to synchronize all the data on disk.
@@ -9,8 +8,8 @@
     - array_add doesnt needs index, right?
     - remove unused arguments from r_meta_find (where ?)
     - implement r_meta_find
-#endif
-#if 0
+
+
   SDB SPECS
 
 DatabaseName:
@@ -20,7 +19,7 @@ Keys:
   'meta.<type>.<last>=<array>'  splitted array, each block contains K elements
   'meta.<type>.<addr>=<string>' string representing extra information of the meta type at given address
   'range.<baddr>=<array>'       store valid addresses in a base range array
-#endif
+*/
 
 #include <r_anal.h>
 #include <r_print.h>
@@ -29,22 +28,6 @@ Keys:
 #define META_RANGE_SIZE 0xfff
 #undef DB
 #define DB a->sdb_meta
-
-#if 0
-// Defined but not used. Shall we remove it?
-static char *meta_inrange_get (RAnal *a, ut64 addr, int size) {
-	char key[64];
-	ut64 base, base2;
-	base = META_RANGE_BASE (addr);
-	base2 = META_RANGE_BASE (addr+size);
-	// return string array of all the offsets where there are stuff
-	for (; base<base2; base += META_RANGE_SIZE) {
-		snprintf (key, sizeof (key)-1, "range.0x%"PFMT64x, base);
-		sdb_array_get (DB, key, 0, 0);
-	}
-	return NULL;
-}
-#endif
 
 static int meta_inrange_add (RAnal *a, ut64 addr, int size) {
 	int set = 0;
@@ -66,13 +49,12 @@ static int meta_inrange_del (RAnal *a, ut64 addr, int size) {
 	ut64 base, base2;
 	base = META_RANGE_BASE (addr);
 	base2 = META_RANGE_BASE (addr+size);
-// TODO: optimize this thing?
+	// TODO: optimize this thing?
 	for (; base<base2; base += META_RANGE_SIZE) {
 		snprintf (key, sizeof (key)-1, "range.0x%"PFMT64x, base);
 		if (sdb_array_remove_num (DB, key, addr, 0))
 			set = 1;
 	}
-	//sdb_array_del (DB);
 	return set;
 }
 
@@ -96,7 +78,6 @@ static int meta_type_add (RAnal *a, char type, ut64 addr) {
 	return count;
 }
 
-// TODO: Add APIs to resize meta? nope, just del and add
 R_API int r_meta_set_string(RAnal *a, int type, ut64 addr, const char *s) {
 	char key[100], val[2048], *e_str;
 	int ret;
@@ -136,9 +117,6 @@ R_API char *r_meta_get_string(RAnal *a, int type, ut64 addr) {
 
 R_API int r_meta_del(RAnal *a, int type, ut64 addr, ut64 size, const char *str) {
 	char key[100], *dtr, *s, *p, *next;
-#if 0
-	char key2[100];
-#endif
 	const char *ptr;
 	int i;
 	if (size == UT64_MAX) {
@@ -172,17 +150,6 @@ R_API int r_meta_del(RAnal *a, int type, ut64 addr, ut64 size, const char *str) 
 	ptr = sdb_const_get (DB, key, 0);
 	if (ptr) {
 		sdb_unset (DB, key, 0);
-		#if 0
-		// This code is wrong, but i guess it's necessary in case type is ANY
-		for (i=0; ptr[i]; i++) {
-			if (ptr[i] != SDB_RS) {
-				snprintf (key2, sizeof (key2)-1,
-					"meta.%c.0x%"PFMT64x, ptr[i], addr);
-					printf ("UNSET (%s)\n", key2);
-				sdb_unset (DB, key2, 0);
-			}
-		}
-		#endif
 	}
 	sdb_unset (DB, key, 0);
 	return false;
@@ -190,17 +157,6 @@ R_API int r_meta_del(RAnal *a, int type, ut64 addr, ut64 size, const char *str) 
 
 R_API int r_meta_cleanup(RAnal *a, ut64 from, ut64 to) {
 	return r_meta_del (a, R_META_TYPE_ANY, from, (to-from), NULL);
-}
-
-R_API void r_meta_item_free(void *_item) {
-	RAnalMetaItem *item = _item;
-	free (item);
-}
-
-R_API RAnalMetaItem *r_meta_item_new(int type) {
-	RAnalMetaItem *mi = R_NEW0 (RAnalMetaItem);
-	if (mi) mi->type = type;
-	return mi;
 }
 
 R_API int r_meta_add(RAnal *a, int type, ut64 from, ut64 to, const char *str) {
@@ -240,23 +196,9 @@ R_API int r_meta_add(RAnal *a, int type, ut64 from, ut64 to, const char *str) {
 	return true;
 }
 
-R_API RAnalMetaItem *r_meta_find(RAnal *a, ut64 off, int type, int where) {
+R_API RAnalMetaItem *r_meta_at(RAnal *a, ut64 off, int type, int where) {
+	// TODO: implement me
 	static RAnalMetaItem it = {0};
-	// XXX: return allocated item? wtf
-	if (where != R_META_WHERE_HERE) {
-		eprintf ("THIS WAS NOT SUPOSED TO HAPPEN\n");
-		return NULL;
-	}
-	//char *range = get_in_range (off);
-	if (type == R_META_TYPE_ANY) {
-		//const char *p;
-	//	char key [100];
-	//	snprintf (key, sizeof (key)-1, "meta.0x%"PFMT64x, off);
-		//p = sdb_const_get (DB, key, 0);
-// XXX: TODO unimplemented. see core/disasm.c:1070
-	} else {
-	//	snprintf (key, sizeof (key)-1, "meta.
-	}
 	return &it;
 }
 
@@ -276,7 +218,6 @@ R_API const char *r_meta_type_to_string(int type) {
 
 static void printmetaitem(RAnal *a, RAnalMetaItem *d, int rad) {
 	char *pstr, *str;
-	//eprintf ("%d %d\n", d->space, a->meta_spaces.space_idx);
 	if (a->meta_spaces.space_idx != -1) {
 		if (a->meta_spaces.space_idx != d->space) {
 			return;
@@ -294,7 +235,6 @@ static void printmetaitem(RAnal *a, RAnalMetaItem *d, int rad) {
 			r_name_filter (str, 0);
 			pstr = str;
 		} else pstr = d->str;
-//		r_str_sanitize (str);
 		switch (rad) {
 		case 'j':
 			a->cb_printf ("{\"offset\":%"PFMT64d", \"type\":\"%s\", \"name\":\"%s\"}",
@@ -388,7 +328,6 @@ static void printmetaitem(RAnal *a, RAnalMetaItem *d, int rad) {
 }
 
 static int meta_print_item(void *user, const char *k, const char *v) {
-	// const char *v; // size
 	const char *v2; // space_idx
 	RAnalMetaUserItem *ui = user;
 	RAnalMetaItem it;
@@ -430,44 +369,6 @@ R_API int r_meta_list(RAnal *a, int type, int rad) {
 	return r_meta_list_cb (a, type, rad, NULL, NULL);
 }
 
-static int meta_enumerate_cb(void *user, const char *k, const char *v) {
-	const char *v2;
-	RAnalMetaUserItem *ui = user;
-	RList *list = ui->user;
-	//RAnal *a = ui->anal;
-	RAnalMetaItem *it;
-	if (strlen (k)<8)
-		return 1;
-	if (memcmp (k+6, ".0x", 3))
-		return 1;
-	it = R_NEW0 (RAnalMetaItem);
-	if (!it) return 0;
-	it->type = k[5];
-	it->size = sdb_atoi (v);
-	it->from = sdb_atoi (k+7);
-	it->to = it->from + it->size;
-	v2 = strchr (v, ',');
-	if (!v2) {
-		free (it); 
-		goto beach;
-	}
-	it->space = atoi (v2+1);
-	it->str = strchr (v2+1, ',');
-
-	if (it->str)
-		it->str = (char *)sdb_decode ((const char*)it->str+1, 0);
-	//printmetaitem (ui->anal, &it, ui->rad);
-	r_list_append (list, it);
-beach:
-	return 1;
-}
-
-R_API RList *r_meta_enumerate(RAnal *a, int type) {
-	RList *list = r_list_new ();
-	r_meta_list_cb (a, type, 0, meta_enumerate_cb, list);
-	return list;
-}
-
 static int deserialize(RAnalMetaItem *it, const char *k, const char *v) {
 	const char *v2;
 	if (strlen (k)<8)
@@ -482,7 +383,6 @@ static int deserialize(RAnalMetaItem *it, const char *k, const char *v) {
 	if (!v2) goto beach;
 	it->space = atoi (v2+1);
 	it->str = strchr (v2+1, ',');
-	//printmetaitem (ui->anal, &it, ui->rad);
 beach:
 	return 1;
 }
