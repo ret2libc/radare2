@@ -1,5 +1,7 @@
 /* radare2 - LGPL - Copyright 2009-2016 - pancake */
 
+extern "C" {
+
 #include <r_core.h>
 #include <r_socket.h>
 #include "../config.h"
@@ -139,7 +141,7 @@ R_API char* r_core_add_asmqjmp(RCore *core, ut64 addr) {
 			return NULL;
 		}
 		if (core->asmqjmps_count >= core->asmqjmps_size - 2) {
-			core->asmqjmps = realloc (core->asmqjmps, core->asmqjmps_size * 2 * sizeof (ut64));
+			core->asmqjmps = (ut64 *)realloc (core->asmqjmps, core->asmqjmps_size * 2 * sizeof (ut64));
 			if (!core->asmqjmps) return NULL;
 			core->asmqjmps_size *= 2;
 		}
@@ -318,7 +320,7 @@ static ut64 num_callback(RNum *userptr, const char *str, int *ok) {
 					dst = fcn->addr;
 				st64 delta = dst - off;
 				if (delta < 0) {
-					core->num->nc.curr_tok = '-';
+					core->num->nc.curr_tok = RNCMINUS;
 					delta = off - dst;
 				}
 				return delta;
@@ -581,7 +583,7 @@ static int getsdelta(const char *data) {
 
 static int autocomplete(RLine *line) {
 	int pfree = 0;
-	RCore *core = line->user;
+	RCore *core = (RCore *)line->user;
 	RListIter *iter;
 	RFlagItem *flag;
 	if (core) {
@@ -797,11 +799,11 @@ static int autocomplete(RLine *line) {
 		     !strncmp (line->buffer.data, "dml ", 4) ||
 		     !strncmp (line->buffer.data, "/m ", 3)) {
 			// XXX: SO MANY FUCKING MEMORY LEAKS
+openfile:
 			char *str, *p, *path;
 			int n = 0, i = 0, isroot = 0, iscwd = 0;
 			RList *list;
 			int sdelta;
-openfile:
 			if (!strncmp (line->buffer.data, "#!pipe ", 7)) {
 				sdelta = getsdelta (line->buffer.data + 7) + 7;
 			} else {
@@ -857,7 +859,7 @@ openfile:
 					free (path);
 					path = lala;
 				} else if (*path!='.' && *path!='/') { // ifnot@home
-					char *o = malloc (strlen (path) + 4);
+					char *o = (char *)malloc (strlen (path) + 4);
 					memcpy (o, "./", 2);
 					p = o+2;
 					n = strlen (path);
@@ -1100,7 +1102,7 @@ static const char *r_core_print_offname(void *p, ut64 addr) {
  * Disassemble one instruction at specified address.
  */
 static int __disasm(void *_core, ut64 addr) {
-	RCore *core = _core;
+	RCore *core = (RCore *)_core;
 	ut64 prevaddr = core->offset;
 	int len;
 
@@ -1407,8 +1409,8 @@ R_API int r_core_init(RCore *core) {
 	core->print->get_enumname = getenumname;
 	core->print->get_bitfield = getbitfield;
 	core->print->offname = r_core_print_offname;
-	core->print->cb_printf = (void *)r_cons_printf;
-	core->print->write = (void *)r_cons_memcat;
+	core->print->cb_printf = (int (*)(const char *, ...))r_cons_printf;
+	core->print->write = (int (*)(const unsigned char *, int))r_cons_memcat;
 	core->print->disasm = __disasm;
 	core->print->colorfor = (RPrintColorFor)r_core_anal_optype_colorfor;
 	core->print->hasrefs = (RPrintColorFor)r_core_anal_hasrefs;
@@ -1447,7 +1449,7 @@ R_API int r_core_init(RCore *core) {
 #if __EMSCRIPTEN__
 		core->cons->user_fgets = NULL;
 #else
-		core->cons->user_fgets = (void *)r_core_fgets;
+		core->cons->user_fgets = (int (*)(char *, int))r_core_fgets;
 #endif
 		//r_line_singleton()->user = (void *)core;
 		r_line_hist_load (R2_HOMEDIR"/history");
@@ -1475,7 +1477,7 @@ R_API int r_core_init(RCore *core) {
 	core->assembler->syscall = \
 		core->anal->syscall; // BIND syscall anal/asm
 	r_anal_set_user_ptr (core->anal, core);
-	core->anal->cb_printf = (void *) r_cons_printf;
+	core->anal->cb_printf = (PrintfCallback)r_cons_printf;
 	core->parser = r_parse_new ();
 	core->parser->anal = core->anal;
 	core->parser->varlist = r_anal_var_list;
@@ -1585,8 +1587,8 @@ R_API RCore *r_core_fini(RCore *c) {
 	c->anal = r_anal_free (c->anal);
 	c->assembler = r_asm_free (c->assembler);
 	c->print = r_print_free (c->print);
-	c->bin = r_bin_free (c->bin); // XXX segfaults rabin2 -c
-	c->lang = r_lang_free (c->lang); // XXX segfaults
+	c->bin = (RBin *)r_bin_free (c->bin); // XXX segfaults rabin2 -c
+	c->lang = (RLang *)r_lang_free (c->lang); // XXX segfaults
 	c->dbg = r_debug_free (c->dbg);
 	r_config_free (c->config);
 	/* after r_config_free, the value of I.teefile is trashed */
@@ -1808,7 +1810,7 @@ R_API int r_core_block_size(RCore *core, int bsize) {
 			bsize, core->blocksize_max);
 		bsize = core->blocksize_max;
 	}
-	bump = realloc (core->block, bsize + 1);
+	bump = (ut8 *)realloc (core->block, bsize + 1);
 	if (!bump) {
 		eprintf ("Oops. cannot allocate that much (%u)\n", bsize);
 		ret = false;
@@ -1929,7 +1931,7 @@ reaccept:
 				eprintf ("open (%d): ", cmd);
 				r_socket_read_block (c, &cmd, 1); // len
 				pipefd = -1;
-				ptr = malloc (cmd + 1);
+				ptr = (ut8 *)malloc (cmd + 1);
 				//XXX cmd is ut8..so <256 if (cmd<RMT_MAX)
 				if (!ptr) {
 					eprintf ("Cannot malloc in rmt-open len = %d\n", cmd);
@@ -2073,7 +2075,7 @@ reaccept:
 				r_socket_read_block (c, (ut8*)&bufr, 4);
 				i = r_read_be32 (bufr);
 				if (i > 0 && i < RMT_MAX) {
-					if ((cmd = malloc (i + 1))) {
+					if ((cmd = (char *)malloc (i + 1))) {
 						r_socket_read_block (c, (ut8*)cmd, i);
 						cmd[i] = '\0';
 						eprintf ("len: %d cmd:'%s'\n", i, cmd);
@@ -2123,7 +2125,7 @@ reaccept:
 					once = false;
 				}
 #endif
-				bufw = malloc (cmd_len + 5);
+				bufw = (char *)malloc (cmd_len + 5);
 				bufw[0] = RMT_CMD | RMT_REPLY;
 				r_write_be32 (bufw + 1, cmd_len);
 				memcpy (bufw + 5, cmd_output, cmd_len);
@@ -2134,9 +2136,10 @@ reaccept:
 				break;
 				}
 			case RMT_WRITE:
+				{
 				r_socket_read (c, buf, 4);
 				x = r_read_at_be32 (buf, 0);
-				ptr = malloc (x);
+				ptr = (ut8 *)malloc (x);
 				r_socket_read (c, ptr, x);
 				int ret = r_core_write_at (core, core->offset, ptr, x);
 				buf[0] = RMT_WRITE | RMT_REPLY;
@@ -2146,6 +2149,7 @@ reaccept:
 				free (ptr);
 				ptr = NULL;
 				break;
+				}
 			case RMT_SEEK:
 				r_socket_read_block (c, buf, 9);
 				x = r_read_at_be64 (buf, 1);
@@ -2196,7 +2200,7 @@ reaccept:
 R_API int r_core_search_cb(RCore *core, ut64 from, ut64 to, RCoreSearchCallback cb) {
 	int ret, len = core->blocksize;
 	ut8 *buf;
-	if ((buf = malloc (len))) {
+	if ((buf = (ut8 *)malloc (len))) {
 		while (from < to) {
 			ut64 delta = to-from;
 			if (delta < len) {
@@ -2249,10 +2253,10 @@ R_API char *r_core_editor (const RCore *core, const char *file, const char *str)
 
 	if (name && (!editor || !*editor || !strcmp (editor, "-"))) {
 		RCons *cons = r_cons_singleton ();
-		void *tmp = cons->editor;
+		void *tmp = (void *)cons->editor;
 		cons->editor = NULL;
 		r_cons_editor (name, NULL);
-		cons->editor = tmp;
+		cons->editor = (RConsEditorCallback)tmp;
 	} else {
 		if (editor && name) {
 			r_sys_cmdf ("%s '%s'", editor, name);
@@ -2322,4 +2326,6 @@ R_API RBuffer *r_core_syscall (RCore *core, const char *name, const char *args) 
 		}
 	}
 	return b;
+}
+
 }

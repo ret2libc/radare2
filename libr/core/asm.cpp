@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2009-2015 - nibble, pancake */
 
+extern "C" {
+
 #include <r_types.h>
 #include <r_core.h>
 #include <r_asm.h>
@@ -35,7 +37,7 @@ R_API RList *r_core_asm_hit_list_new() {
 }
 
 R_API void r_core_asm_hit_free(void *_hit) {
-	RCoreAsmHit *hit = _hit;
+	RCoreAsmHit *hit = (RCoreAsmHit *)_hit;
 	if (hit) {
 		if (hit->code)
 			free (hit->code);
@@ -252,7 +254,7 @@ static RCoreAsmHit * find_addr(RList *hits, ut64 addr) {
 	RCoreAsmHit dummy_value;
 	dummy_value.addr = addr;
 	addr_iter = r_list_find (hits, &dummy_value, ((RListComparator)rcoreasm_address_comparator));
-	return r_list_iter_get_data(addr_iter);
+	return (RCoreAsmHit *)r_list_iter_get_data(addr_iter);
 }
 
 static int handle_forward_disassemble(RCore* core, RList *hits, ut8* buf, ut64 len, ut64 current_buf_pos, ut64 current_instr_addr, ut64 end_addr){
@@ -515,7 +517,7 @@ static RList *r_core_asm_back_disassemble (RCore *core, ut64 addr, int len, ut64
 	}
 
 	hits = r_core_asm_hit_list_new ();
-	buf = malloc (len + extra_padding);
+	buf = (ut8 *)malloc (len + extra_padding);
 
 	if (!hits || !buf ){
 		if (hits) {
@@ -661,7 +663,7 @@ R_API ut32 r_core_asm_bwdis_len (RCore* core, int* instr_len, ut64* start_addr, 
 	if (instr_len)
 		*instr_len = 0;
 	if (hits && r_list_length (hits) > 0) {
-		hit = r_list_get_bottom (hits);
+		hit = (RCoreAsmHit *)r_list_get_bottom (hits);
 		if (start_addr)
 			*start_addr = hit->addr;
 		r_list_foreach (hits, iter, hit)
@@ -671,4 +673,6 @@ R_API ut32 r_core_asm_bwdis_len (RCore* core, int* instr_len, ut64* start_addr, 
 	}
 	r_list_free (hits);
 	return instr_run;
+}
+
 }

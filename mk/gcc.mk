@@ -7,6 +7,8 @@ ONELIB=0
 CC_AR=ar q ${LIBAR}
 CFLAGS+=-MD
 CFLAGS_INCLUDE=-I
+CPPFLAGS+=-MD
+CPPFLAGS_INCLUDE=-I
 LDFLAGS_LINK=-l
 LDFLAGS_LINKPATH=-L
 CFLAGS_OPT0=-O0
@@ -20,6 +22,7 @@ ARCH=$(shell uname -m)
 #CFLAGS+=-arch ${ARCH}
 #LDFLAGS+=-arch ${ARCH}
 CFLAGS+=-fno-common
+CPPFLAGS+=-fno-common
 LDFLAGS_LIB=-dynamiclib
 LDFLAGS_SONAME=-Wl,-install_name,${LIBDIR}/
 else

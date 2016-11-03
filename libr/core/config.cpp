@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2009-2016 - pancake */
 
+extern "C" {
+
 #include <r_core.h>
 
 #define SETI(x,y,z) r_config_node_desc(r_config_set_i(cfg,x,y), z);
@@ -36,9 +38,9 @@ static int compareDist(const RAnalFunction *a, const RAnalFunction *b) {
 }
 
 static int cb_diff_sort(void *_core, void *_node) {
-	RConfigNode *node = _node;
+	RConfigNode *node = (RConfigNode *)_node;
 	const char *column = node->value;
-	RCore *core = _core;
+	RCore *core = (RCore *)_core;
 	if (column && strcmp (column, "?")) {
 		if (!strcmp (column, "name")) {
 			core->anal->columnSort = (RListComparator)compareName;
@@ -899,7 +901,7 @@ static int cb_hexpairs(void *user, void *data) {
 
 static int r_core_esil_cmd(RAnalEsil *esil, const char *cmd, int a1, int a2) {
 	if (cmd && *cmd) {
-		RCore *core = esil->anal->user;
+		RCore *core = (RCore *)esil->anal->user;
 		r_core_cmdf (core, "%s %d %d", cmd, a1, a2);
 		return true;
 	}
@@ -1124,7 +1126,7 @@ static int cb_scrfgets(void* user, void* data) {
 	RCore *core = (RCore *) user;
 	RConfigNode *node = (RConfigNode*) data;
 	core->cons->user_fgets = node->i_value
-		? NULL : (void *)r_core_fgets;
+		? NULL : (int (*)(char *, int))r_core_fgets;
 	return true;
 }
 
@@ -2148,4 +2150,6 @@ R_API int r_core_config_init(RCore *core) {
 
 	r_config_lock (cfg, true);
 	return true;
+}
+
 }

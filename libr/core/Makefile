@@ -12,6 +12,7 @@ OBJS+=anal.o project.o gdiff.o asm.o vmenus.o disasm.o plugin.o
 OBJS+=help.o task.o panels.o pseudo.o vmarks.o anal_tp.o
 
 CFLAGS+=-DCORELIB
+CPPFLAGS+=-DCORELIB
 LDFLAGS+=${DL_LIBS}
 
 ifeq ($(shell uname),OpenBSD)

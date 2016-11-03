@@ -1,5 +1,6 @@
 /* radare - LGPL - Copyright 2011-2016 - pancake */
 
+extern "C" {
 #include <r_core.h>
 
 R_API int r_core_patch_line (RCore *core, char *str) {
@@ -131,4 +132,6 @@ R_API int r_core_patch (RCore *core, const char *patch) {
 //	eprintf ("Missing newline\n");
 	free (p0);
 	return 0;
+}
+
 }

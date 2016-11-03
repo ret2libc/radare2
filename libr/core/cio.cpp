@@ -1,5 +1,7 @@
 /* radare2 - LGPL - Copyright 2009-2016 - pancake */
 
+extern "C" {
+
 #include "r_core.h"
 
 R_API int r_core_setup_debugger (RCore *r, const char *debugbackend, bool attach) {
@@ -8,7 +10,7 @@ R_API int r_core_setup_debugger (RCore *r, const char *debugbackend, bool attach
 	RIODesc * fd = r->file ? r->file->desc : NULL;
 	const char *prompt = NULL;
 
-	p = fd ? fd->data : NULL;
+	p = fd ? (int *)fd->data : NULL;
 	r_config_set_i (r->config, "cfg.debug", 1);
 	if (!p) {
 		eprintf ("Invalid debug io\n");
@@ -78,7 +80,7 @@ R_API int r_core_dump(RCore *core, const char *file, ut64 addr, ut64 size, int a
 	/* some io backends seems to be buggy in those cases */
 	if (bs > 4096)
 		bs = 4096;
-	buf = malloc (bs);
+	buf = (ut8 *)malloc (bs);
 	if (!buf) {
 		eprintf ("Cannot alloc %d bytes\n", bs);
 		fclose (fd);
@@ -135,7 +137,7 @@ R_API int r_core_write_op(RCore *core, const char *arg, char op) {
 				eprintf ("Clipboard is empty and no value argument(s) given\n");
 				goto beach;
 			}
-			str = r_mem_dup (core->yank_buf->buf, len);
+			str = (char *)r_mem_dup (core->yank_buf->buf, len);
 			if (!str)
 				goto beach;
 		}
@@ -415,7 +417,7 @@ R_API int r_core_shift_block(RCore *core, ut64 addr, ut64 b_size, st64 dist) {
 
 
 	// XXX handling basic cases atm
-	shift_buf = malloc (b_size);
+	shift_buf = (ut8 *)malloc (b_size);
 	memset (shift_buf, 0, b_size);
 
 	// cases
@@ -493,4 +495,6 @@ R_API int r_core_is_valid_offset (RCore *core, ut64 offset) {
 		return R_FAIL;
 	}
 	return r_io_is_valid_offset (core->io, offset, 0);
+}
+
 }

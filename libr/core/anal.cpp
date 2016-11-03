@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2009-2016 - pancake, nibble */
 
+extern "C" {
+
 #include <r_types.h>
 #include <r_list.h>
 #include <r_flag.h>
@@ -84,7 +86,7 @@ static char *is_string_at(RCore *core, ut64 addr, int *olen) {
 	if (iscodesection (core, addr)) {
 		return NULL;
 	}
-	str = calloc (1024, 1);
+	str = (ut8 *)calloc (1024, 1);
 	if (!str) {
 		return NULL;
 	}
@@ -327,7 +329,7 @@ R_API char *r_core_anal_fcn_autoname(RCore *core, ut64 addr, int dump) {
 }
 
 static ut64 *next_append(ut64 *next, int *nexti, ut64 v) {
-	ut64 *tmp_next = realloc (next, sizeof (ut64) * (1 + *nexti));
+	ut64 *tmp_next = (ut64 *)realloc (next, sizeof (ut64) * (1 + *nexti));
 	if (!tmp_next) {
 		return NULL;
 	}
@@ -359,7 +361,7 @@ static int r_anal_try_get_fcn(RCore *core, RAnalRef *ref, int fcndepth, int refd
 	if (!sec) {
 		return 1;
 	}
-	buf = calloc (bufsz, 1);
+	buf = (ut8 *)calloc (bufsz, 1);
 	if (!buf) {
 		eprintf ("Error: malloc (buf)\n");
 		return 0;
@@ -469,7 +471,7 @@ static int core_anal_fcn(RCore *core, ut64 at, ut64 from, int reftype, int depth
 	} else {
 		fcn->name = r_str_newf ("fcn.%08"PFMT64x, at);
 	}
-	buf = malloc (core->anal->opt.bb_max_size);
+	buf = (ut8 *)malloc (core->anal->opt.bb_max_size);
 	if (!buf) {
 		eprintf ("Error: malloc (buf)\n");
 		goto error;
@@ -582,7 +584,7 @@ static int core_anal_fcn(RCore *core, ut64 at, ut64 from, int reftype, int depth
 				ref->type = reftype;
 				r_list_append (fcn->xrefs, ref);
 				// XXX this is creating dupped entries in the refs list with invalid reftypes, wtf?
-				r_anal_xrefs_set (core->anal, reftype, from, fcn->addr);
+				r_anal_xrefs_set (core->anal, (RAnalRefType)reftype, from, fcn->addr);
 			}
 			// XXX: this is wrong. See CID 1134565
 			r_anal_fcn_insert (core->anal, fcn);
@@ -729,7 +731,7 @@ static void print_hint_h_format(RAnalHint* hint) {
 
 static int cb(void *p, const char *k, const char *v) {
 	RAnalHint *hint;
-	HintListState *hls = p;
+	HintListState *hls = (HintListState *)p;
 
 	hint = r_anal_hint_from_string (hls->a, sdb_atoi (k + 5), v);
 	// TODO: format using (mode)
@@ -821,7 +823,7 @@ static char *core_anal_graph_label(RCore *core, RAnalBlock *bb, int opts) {
 				filestr = r_file_slurp_line (file, line, 0);
 				if (filestr) {
 					int flen = strlen (filestr);
-					cmdstr = realloc (cmdstr, idx + flen + 8);
+					cmdstr = (char *)realloc (cmdstr, idx + flen + 8);
 					memcpy (cmdstr + idx, filestr, flen);
 					idx += flen;
 					if (is_json) {
@@ -938,7 +940,7 @@ static int core_anal_graph_nodes(RCore *core, RAnalFunction *fcn, int opts) {
 			sdb_num_set (DB, key, bbi->size, 0); // bb.<addr>.size=<num>
 		} else if (is_json) {
 			RDebugTracepoint *t = r_debug_trace_get (core->dbg, bbi->addr);
-			ut8 *buf = malloc (bbi->size);
+			ut8 *buf = (ut8 *)malloc (bbi->size);
 			if (count > 1) {
 				r_cons_printf (",");
 			}
@@ -1141,7 +1143,7 @@ R_API int r_core_anal_bb(RCore *core, RAnalFunction *fcn, ut64 at, int head) {
 
 	if (ret == R_ANAL_RET_NEW) { /* New bb */
 		// XXX: use static buffer size of 512 or so
-		buf = malloc (core->anal->opt.bb_max_size);
+		buf = (ut8 *)malloc (core->anal->opt.bb_max_size);
 		if (!buf) {
 			goto error;
 		}
@@ -1332,7 +1334,7 @@ R_API int r_core_anal_fcn(RCore *core, ut64 at, ut64 from, int reftype, int dept
 					ref->type = reftype;
 					r_list_append (fcn->xrefs, ref);
 					// XXX this is creating dupped entries in the refs list with invalid reftypes, wtf?
-					r_anal_xrefs_set (core->anal, reftype, from, fcn->addr);
+					r_anal_xrefs_set (core->anal, (RAnalRefType)reftype, from, fcn->addr);
 				} else {
 					eprintf ("Error: new (xref)\n");
 				}
@@ -1551,7 +1553,7 @@ R_API int r_core_anal_fcn_list_size(RCore *core) {
 }
 
 static int cmpfcn(const void *_a, const void *_b) {
-	const RAnalFunction *_fcn1 = _a, *_fcn2 = _b;
+	const RAnalFunction *_fcn1 = (const RAnalFunction *)_a, *_fcn2 = (const RAnalFunction *)_b;
 	return (_fcn1->addr > _fcn2->addr);
 }
 
@@ -2077,7 +2079,7 @@ R_API void fcn_callconv(RCore *core, RAnalFunction *fcn) {
 		return;
 	}
 	int bb_size = core->anal->opt.bb_max_size;
-	buf = calloc (1, bb_size);
+	buf = (ut8 *)calloc (1, bb_size);
 	if (!buf) {
 		return;
 	}
@@ -2086,7 +2088,7 @@ R_API void fcn_callconv(RCore *core, RAnalFunction *fcn) {
 			continue;
 		}
 		if (bb->size > bb_size) {
-			tbuf = realloc (buf, bb->size);
+			tbuf = (ut8 *)realloc (buf, bb->size);
 			if (!tbuf) {
 				break;
 			}
@@ -2679,7 +2681,7 @@ R_API int r_core_anal_data (RCore *core, ut64 addr, int count, int depth) {
 	int i, j;
 
 	count = R_MIN (count, len);
-	buf = malloc (len + 1);
+	buf = (ut8 *)malloc (len + 1);
 	if (!buf) {
 		return false;
 	}
@@ -2751,7 +2753,7 @@ R_API RCoreAnalStats* r_core_anal_get_stats(RCore *core, ut64 from, ut64 to, ut6
 	}
 	blocks = (to-from)/step;
 	as_size = (1+blocks) * sizeof (RCoreAnalStatsItem);
-	as->block = malloc (as_size);
+	as->block = (RCoreAnalStatsItem *)malloc (as_size);
 	if (!as->block) {
 		free (as);
 		return NULL;
@@ -2827,7 +2829,7 @@ R_API RList* r_core_anal_cycles (RCore *core, int ccl) {
 				r_list_append (hooks, ch);
 				ch = NULL;
 				while (!ch && cf) {
-					ch = r_list_pop (cf->hooks);
+					ch = (RAnalCycleHook *)r_list_pop (cf->hooks);
 					if (ch) {
 						addr = ch->addr;
 						ccl = ch->cycles;
@@ -2893,7 +2895,7 @@ R_API RList* r_core_anal_cycles (RCore *core, int ccl) {
 				}
 				ch = NULL;
 				while (!ch && cf) {
-					ch = r_list_pop (cf->hooks);
+					ch = (RAnalCycleHook *)r_list_pop (cf->hooks);
 					if (ch) {
 						addr = ch->addr;
 						ccl = ch->cycles;
@@ -2939,7 +2941,7 @@ R_API RList* r_core_anal_cycles (RCore *core, int ccl) {
 			r_list_append (hooks, ch);
 			ch = NULL;
 			while (!ch && cf) {
-				ch = r_list_pop (cf->hooks);
+				ch = (RAnalCycleHook *)r_list_pop (cf->hooks);
 				if (ch) {
 					addr = ch->addr;
 					ccl = ch->cycles;
@@ -2957,10 +2959,10 @@ R_API RList* r_core_anal_cycles (RCore *core, int ccl) {
 	}
 	if (core->cons->breaked) {
 		while (cf) {
-			ch = r_list_pop (cf->hooks);
+			ch = (RAnalCycleHook *)r_list_pop (cf->hooks);
 			while (ch) {
 				free (ch);
-				ch = r_list_pop (cf->hooks);
+				ch = (RAnalCycleHook *)r_list_pop (cf->hooks);
 			}
 			prev = cf->prev;
 			r_anal_cycle_frame_free (cf);
@@ -3187,7 +3189,7 @@ R_API void r_core_anal_esil(RCore *core, const char *str, const char *target) {
 	if (iend < 0) {
 		return;
 	}
-	buf = malloc (iend + 2);
+	buf = (ut8 *)malloc (iend + 2);
 	if (!buf) {
 		perror ("malloc");
 		return;
@@ -3355,4 +3357,6 @@ R_API void r_core_anal_esil(RCore *core, const char *str, const char *target) {
 	free (buf);
 	free (op.mnemonic);
 	r_cons_break_end ();
+}
+
 }

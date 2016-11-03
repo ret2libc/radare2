@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2009-2016 - pancake */
 
+extern "C" {
+
 #include <r_core.h>
 #include <string.h>
 
@@ -22,7 +24,7 @@ static const char *printfmt[] = {
 
 #if USE_THREADS
 static int visual_repeat_thread(RThread *th) {
-	RCore *core = th->user;
+	RCore *core = (RCore *)th->user;
 	int i = 0;
 	for (;;) {
 		if (core->cons->breaked) {
@@ -760,13 +762,13 @@ repeat:
 		}
 		goto repeat;
 	} else if (ch == ' ' || ch == '\n' || ch == '\r') {
-		refi = r_list_get_n (xrefs, skip);
+		refi = (RAnalRef *)r_list_get_n (xrefs, skip);
 		if (refi) {
 			r_core_cmdf (core, "s 0x%"PFMT64x, refi->addr);
 			ret = 1;
 		}
 	} else if (ch >= '0' && ch <= '9') {
-		refi = r_list_get_n (xrefs, ch - 0x30);
+		refi = (RAnalRef *)r_list_get_n (xrefs, ch - 0x30);
 		if (refi) {
 			r_core_cmdf (core, "s 0x%"PFMT64x, refi->addr);
 			ret = 1;
@@ -821,7 +823,7 @@ R_API int r_core_visual_xrefs_X (RCore *core) {
 	ch = r_cons_readchar ();
 	if (fun && fun->refs) {
 		if (ch >= '0' && ch <= '9') {
-			refi = r_list_get_n (fun->refs, ch-0x30);
+			refi = (RAnalRef *)r_list_get_n (fun->refs, ch-0x30);
 			if (refi) {
 				r_core_cmdf (core, "s 0x%"PFMT64x, refi->addr);
 				ret = 1;
@@ -1554,6 +1556,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		r_io_sundo_push (core->io, core->offset, r_print_get_cursor (core->print));
 		break;
 	case 'G':
+		{
 		ret = 0;
 		int scols = r_config_get_i (core->config, "hex.cols");
 		if (core->file) {
@@ -1582,6 +1585,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			r_io_sundo_push (core->io, core->offset, r_print_get_cursor (core->print));
 		}
 		break;
+		}
 	case 'h':
 		if (core->print->cur_enabled) {
 			cursor_left (core, false);
@@ -2376,4 +2380,6 @@ dodo:
 	core->cons->event_data = NULL;
 	r_cons_show_cursor (true);
 	return 0;
+}
+
 }

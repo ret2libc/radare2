@@ -1,6 +1,8 @@
 /* radare - LGPL - Copyright 2016 - oddcoder */
 /* type matching - type propagation */
 
+extern "C" {
+
 #include <r_anal.h>
 #include <r_util.h>
 #include <r_core.h>
@@ -261,5 +263,7 @@ R_API void r_anal_type_match(RCore *core, RAnalFunction *fcn) {
 	}
 	r_cons_break_end ();
 	r_anal_emul_restore (core, esil_var);
+
+}
 
 }

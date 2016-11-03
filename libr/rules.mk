@@ -7,6 +7,7 @@ _INCLUDE_RULES_MK_=
 ifeq ($(DEBUG),1)
 export NOSTRIP=1
 CFLAGS+=-g
+CPPFLAGS+=-g
 LINK+=-g -ggdb
 endif
 
@@ -21,6 +22,7 @@ endif
 
 ALL?=
 CFLAGS+=-I$(LIBR)/include
+CPPFLAGS+=-I$(LIBR)/include
 LINK+=$(addprefix -L../,$(subst r_,,$(BINDEPS)))
 LINK+=$(addprefix -l,$(BINDEPS))
 SRC=$(subst .o,.c,$(OBJ))

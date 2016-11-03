@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2011-2016 - earada, pancake */
 
+extern "C" {
+
 #include <r_core.h>
 
 #define is_in_range(at, from, sz) ((at) >= (from) && (at) < ((from) + (sz)))
@@ -1769,7 +1771,7 @@ static int bin_sections(RCore *r, int mode, ut64 laddr, int va, ut64 at, const c
 		} else if (IS_MODE_SIMPLE (mode)) {
 			char *hashstr = NULL;
 			if (chksum) {
-				ut8 *data = malloc (section->size);
+				ut8 *data = (ut8 *)malloc (section->size);
 				if (!data) return false;
 				ut32 datalen = section->size;
 				r_io_pread (r->io, section->paddr, data, datalen);
@@ -1787,7 +1789,7 @@ static int bin_sections(RCore *r, int mode, ut64 laddr, int va, ut64 at, const c
 		} else if (IS_MODE_JSON (mode)) {
 			char *hashstr = NULL;
 			if (chksum) {
-				ut8 *data = malloc (section->size);
+				ut8 *data = (ut8 *)malloc (section->size);
 				if (!data) return false;
 				ut32 datalen = section->size;
 				r_io_pread (r->io, section->paddr, data, datalen);
@@ -1860,7 +1862,7 @@ static int bin_sections(RCore *r, int mode, ut64 laddr, int va, ut64 at, const c
 		} else {
 			char *hashstr = NULL, str[128];
 			if (chksum) {
-				ut8 *data = malloc (section->size);
+				ut8 *data = (ut8 *)malloc (section->size);
 				if (!data) return false;
 				ut32 datalen = section->size;
 				// VA READ IS BROKEN?
@@ -2234,8 +2236,8 @@ static void bin_pe_versioninfo(RCore *r) {
 					int lenval = 0;
 					ut8 *key_utf16 = sdb_decode (sdb_const_get (sdb, "key", 0), &lenkey);
 					ut8 *val_utf16 = sdb_decode (sdb_const_get (sdb, "value", 0), &lenval);
-					ut8 *key_utf8 = calloc (lenkey * 2, 1);
-					ut8 *val_utf8 = calloc (lenval * 2, 1);
+					ut8 *key_utf8 = (ut8 *)calloc (lenkey * 2, 1);
+					ut8 *val_utf8 = (ut8 *)calloc (lenval * 2, 1);
 
 					if (r_str_utf16_to_utf8 (key_utf8, lenkey * 2, key_utf16, lenkey, true) < 0
 						|| r_str_utf16_to_utf8 (val_utf8, lenval * 2, val_utf16, lenval, true) < 0) {
@@ -2382,9 +2384,9 @@ static int bin_signature(RCore *r, int mode) {
 
 R_API void r_core_bin_export_info_rad(RCore *core) {
 	RBinFile *bf = r_core_bin_cur (core);
-	Sdb *db = NULL; 
+	Sdb *db = NULL;
 	if (!bf) return;
-	db = sdb_ns (bf->sdb, "info", 0);; 
+	db = sdb_ns (bf->sdb, "info", 0);;
 	if (!db) return;
 	char *flagname;
 	char *offset = NULL;
@@ -2600,4 +2602,6 @@ R_API int r_core_bin_list(RCore *core, int mode) {
 	//r_core_file_set_by_file (core, cur_cf);
 	//r_core_bin_bind (core, cur_bf);
 	return count;
+}
+
 }

@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2009-2016 - nibble, pancake, dso */
 
+extern "C" {
+
 #include "r_core.h"
 #include "r_cons.h"
 
@@ -243,7 +245,7 @@ static void ds_print_comments_right(RDisasmState *ds);
 static void ds_print_ptr(RDisasmState *ds, int len, int idx);
 
 static int cmpaddr(const void *_a, const void *_b) {
-	const RAnalBlock *a = _a, *b = _b;
+	const RAnalBlock *a = (RAnalBlock *)_a, *b = (RAnalBlock *)_b;
 	return (a->addr > b->addr);
 }
 
@@ -603,7 +605,7 @@ static char *colorize_asm_string(RCore *core, RDisasmState *ds) {
 			scol2 = strdup ("");
 		}
 
-		source = malloc (strlen (scol1) + strlen (scol2) + 2 + 1); // reuse source variable
+		source = (char *)malloc (strlen (scol1) + strlen (scol2) + 2 + 1); // reuse source variable
 		sprintf (source, "%s||%s", scol1, scol2);
 		free (scol1);
 		free (scol2);
@@ -672,7 +674,7 @@ static void ds_build_op_str(RDisasmState *ds) {
 			free (ds->opstr);
 			ds->opstr = strdup (R_STRBUF_SAFEGET (&ds->analop.esil));
 		} else {
-			char *p = malloc (strlen (ds->opstr) + 6); /* What's up '\0' ? */
+			char *p = (char *)malloc (strlen (ds->opstr) + 6); /* What's up '\0' ? */
 			if (p) {
 				strcpy (p, "TODO,");
 				strcpy (p + 5, ds->opstr);
@@ -884,7 +886,7 @@ static void ds_atabs_option(RDisasmState *ds) {
 		return;
 	}
 	free (ds->opstr);
-	ds->opstr = b = malloc (size + 1);
+	ds->opstr = b = (char *)malloc (size + 1);
 	strncpy (b, ds->asmop.buf_asm, R_MIN (size, R_ASM_BUFSIZE));
 	b[size] = 0;
 	for (; *b; b++, i++) {
@@ -1556,7 +1558,7 @@ static void printCol(RDisasmState *ds, char *sect, int cols, const char *color) 
 	int pre, post;
 	if (cols < 8) cols = 8;
 	int outsz = cols + 32;
-	char *out = malloc (outsz);
+	char *out = (char *)malloc (outsz);
 	if (!out) {
 		return;
 	}
@@ -1723,7 +1725,7 @@ static void ds_print_offset(RDisasmState *ds) {
 		if (ds->_tabsoff != ds->atabsoff) {
 			char *b = ds->_tabsbuf;
 			// TODO optimize to avoid down resizing
-			b = malloc (ds->atabsoff + 1);
+			b = (char *)malloc (ds->atabsoff + 1);
 			if (b) {
 				memset (b, ' ', ds->atabsoff);
 				b[ds->atabsoff] = 0;
@@ -2016,7 +2018,7 @@ static st64 revert_cdiv_magic(st64 magic) {
 }
 
 static void ds_cdiv_optimization(RDisasmState *ds) {
-	char *esil;
+	const char *esil;
 	char *end, *comma;
 	st64 imm;
 	st64 divisor;
@@ -2558,7 +2560,7 @@ static void ds_print_ptr(RDisasmState *ds, int len, int idx) {
 		/* do nothing */
 	} else if (((st64)p) > 0) {
 		const char *kind;
-		char *msg = calloc (sizeof (char), len);
+		char *msg = (char *)calloc (sizeof (char), len);
 		RFlagItem *f, *f2;
 		r_io_read_at (core->io, p, (ut8*)msg, len - 1);
 		if (ds->analop.refptr) {
@@ -2587,7 +2589,7 @@ static void ds_print_ptr(RDisasmState *ds, int len, int idx) {
 					if (f) {
 						flag = f->name;
 					} else {
-						msg2 = calloc (sizeof (char), len);
+						msg2 = (char *)calloc (sizeof (char), len);
 						r_io_read_at (core->io, n, (ut8*)msg2, len - 1);
 						msg2[len-1] = 0;
 						kind = r_anal_data_kind (core->anal, p, (const ut8*)msg2, len - 1);
@@ -2778,7 +2780,7 @@ static void ds_print_relocs(RDisasmState *ds) {
 		const int cmtcol = ds->cmtcol;
 		char *ll = r_cons_lastline ();
 		int cstrlen = strlen (ll);
-		int cols, ansilen = r_str_ansi_len (ll);
+		int ansilen = r_str_ansi_len (ll);
 		int utf8len = r_utf8_strlen ((const ut8*)ll);
 		int cells = utf8len - (cstrlen - ansilen);
 		int len = cmtcol - cells;
@@ -2804,7 +2806,7 @@ static int mymemwrite1(RAnalEsil *esil, ut64 addr, const ut8 *buf, int len) {
 static int myregwrite(RAnalEsil *esil, const char *name, ut64 *val) {
 	char str[64], *msg = NULL;
 	ut32 *n32 = (ut32*)str;
-	RDisasmState *ds = esil->user;
+	RDisasmState *ds = (RDisasmState *)esil->user;
 
 	if (ds) {
 		ds->esil_likely = true;
@@ -3392,7 +3394,7 @@ R_API int r_core_print_disasm(RPrint *p, RCore *core, ut64 addr, ut8 *buf, int l
 	if (!core->keep_asmqjmps) { // hack
 		core->asmqjmps_count = 0;
 		core->asmqjmps_size = R_CORE_ASMQJMPS_NUM;
-		core->asmqjmps = realloc (core->asmqjmps, core->asmqjmps_size * sizeof (ut64));
+		core->asmqjmps = (ut64 *)realloc (core->asmqjmps, core->asmqjmps_size * sizeof (ut64));
 		if (core->asmqjmps) {
 			for (i = 0; i < R_CORE_ASMQJMPS_NUM; i++) {
 				core->asmqjmps[i] = UT64_MAX;
@@ -3664,7 +3666,7 @@ toro:
 		if (len < 4) {
 			len = 4;
 		}
-		buf = nbuf = malloc (len);
+		buf = nbuf = (ut8 *)malloc (len);
 		if (ds->tries > 0) {
 			if (r_core_read_at (core, ds->addr, buf, len) ) {
 				goto toro;
@@ -4132,7 +4134,7 @@ R_API int r_core_print_disasm_all(RCore *core, ut64 addr, int l, int len, int mo
 		l = len;
 	}
 	if (l > core->blocksize || addr != core->offset) {
-		buf = malloc (l + 1);
+		buf = (ut8 *)malloc (l + 1);
 		r_core_read_at (core, addr, buf, l);
 	}
 	if (mode == 'j') {
@@ -4236,7 +4238,7 @@ R_API int r_core_print_fcn_disasm(RPrint *p, RCore *core, ut64 addr, int l, int 
 	}
 
 	cur_buf_sz = r_anal_fcn_size (fcn) + 1;
-	buf = malloc (cur_buf_sz);
+	buf = (ut8 *)malloc (cur_buf_sz);
 	if (!buf) {
 		return -1;
 	}
@@ -4302,7 +4304,7 @@ R_API int r_core_print_fcn_disasm(RPrint *p, RCore *core, ut64 addr, int l, int 
 		if (len > cur_buf_sz) {
 			free (buf);
 			cur_buf_sz = len;
-			buf = malloc (cur_buf_sz);
+			buf = (ut8 *)malloc (cur_buf_sz);
 			ds->buf = buf;
 		}
 		do {
@@ -4424,4 +4426,6 @@ R_API int r_core_print_fcn_disasm(RPrint *p, RCore *core, ut64 addr, int l, int 
 	ds_free (ds);
 	r_list_free (bb_list);
 	return idx;
+}
+
 }
