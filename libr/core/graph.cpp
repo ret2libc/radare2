@@ -1,18 +1,18 @@
 /* Copyright radare2 - 2014-2016 - pancake, ret2libc */
 
-#include <r_core.h>
+extern "C" {
 #include <r_cons.h>
+#include <r_core.h>
 #include <ctype.h>
 #include <limits.h>
+}
 
-static int mousemode = 0;
-static const char *mousemodes[] = {
-	"canvas-y",
-	"canvas-x",
-	"node-y",
-	"node-x",
-	NULL
-};
+#include <map>
+#include <set>
+#include <vector>
+using std::map;
+using std::set;
+using std::vector;
 
 #define BORDER 3
 #define BORDER_WIDTH 4
@@ -47,7 +47,7 @@ static const char *mousemodes[] = {
 #define get_anode(gn) (gn ? (RANode *)gn->data : NULL)
 
 #define graph_foreach_anode(list, it, pos, anode) \
-	if (list) for (it = list->head; it && (pos = it->data) && (pos) && (anode = (RANode *)pos->data); it = it->n)
+	if (list) for (it = list->head; it && (pos = (typeof(pos))it->data) && (pos) && (anode = (RANode *)pos->data); it = it->n)
 
 struct len_pos_t {
 	int len;
@@ -94,6 +94,322 @@ struct agraph_refresh_data {
 #define B1(x,y,w,h) r_cons_canvas_box(g->can, x,y,w,h, g->color_box2)
 #define B2(x,y,w,h) r_cons_canvas_box(g->can, x,y,w,h, g->color_box3)
 #define F(x,y,x2,y2,c) r_cons_canvas_fill(g->can, x,y,x2,y2,c,0)
+
+/* computes the set of vertical classes in the graph */
+/* if v is an original node, L(v) = { v }
+ * if v is a dummy node, L(v) is the set of all the dummies node that belongs
+ *      to the same long edge */
+static map<const RGraphNode *, RList *> compute_vertical_nodes(const RAGraph *g) {
+	map<const RGraphNode *, RList *> res;
+	int i, j;
+
+	for (i = 0; i < g->n_layers; ++i) {
+		for (j = 0; j < g->layers[i].n_nodes; ++j) {
+			RGraphNode *gn = g->layers[i].nodes[j];
+			const RANode *an = get_anode (gn);
+
+			if (res.count(gn) == 0) {
+				RList *vert = r_list_new ();
+				res[gn] = vert;
+				if (an->is_dummy) {
+					RGraphNode *next = gn;
+					const RANode *anext = get_anode (next);
+
+					while (anext->is_dummy) {
+						r_list_append (vert, next);
+						next = r_graph_nth_neighbour (g->graph, next, 0);
+						if (!next) break;
+						anext = get_anode (next);
+					}
+				} else {
+					r_list_append (vert, gn);
+				}
+			}
+		}
+	}
+
+	return res;
+}
+
+static int find_dist (const struct dist_t *a, const struct dist_t *b) {
+	return a->from == b->from && a->to == b->to ? 0 : 1;
+}
+
+/* returns the distance between two nodes */
+/* if the distance between two nodes were explicitly set, returns that;
+ * otherwise calculate the distance of two nodes on the same layer */
+static int dist_nodes (const RAGraph *g, const RGraphNode *a, const RGraphNode *b) {
+	struct dist_t d;
+	const RANode *aa, *ab;
+	RListIter *it;
+	int res = 0;
+
+	if (g->dists) {
+		d.from = a;
+		d.to = b;
+		it = r_list_find (g->dists, &d, (RListComparator)find_dist);
+		if (it) {
+			struct dist_t *old = (struct dist_t *)r_list_iter_get_data (it);
+			return old->dist;
+		}
+	}
+
+	aa = get_anode (a);
+	ab = get_anode (b);
+	if (aa && ab && aa->layer == ab->layer) {
+		int i;
+
+		res = aa == ab && !aa->is_reversed ? HORIZONTAL_NODE_SPACING : 0;
+		for (i = aa->pos_in_layer; i < ab->pos_in_layer; ++i) {
+			const RGraphNode *cur = g->layers[aa->layer].nodes[i];
+			const RGraphNode *next = g->layers[aa->layer].nodes[i + 1];
+			const RANode *anext = get_anode (next);
+			const RANode *acur = get_anode (cur);
+			int found = false;
+
+			if (g->dists) {
+				d.from = cur;
+				d.to = next;
+				it = r_list_find (g->dists, &d, (RListComparator)find_dist);
+				if (it) {
+					struct dist_t *old = (struct dist_t *)r_list_iter_get_data (it);
+					res += old->dist;
+					found = true;
+				}
+			}
+
+			if (!found) {
+				int space = HORIZONTAL_NODE_SPACING;
+				if (acur->is_reversed && anext->is_reversed) {
+					if (!acur->is_reversed)
+						res += acur->w / 2;
+					else if (!anext->is_reversed)
+						res += anext->w / 2;
+					res += 1;
+				} else {
+					res += acur->w / 2 + anext->w / 2 + space;
+				}
+			}
+		}
+	}
+
+	return res;
+}
+
+static int place_nodes_val (const RAGraph *g, const RGraphNode *gn, const RGraphNode *sibl, map<const RGraphNode *, int> &res, int is_left) {
+	if (is_left) return res[sibl] + dist_nodes (g, sibl, gn);
+	return res[sibl] - dist_nodes (g, gn, sibl);
+}
+
+static int place_nodes_sel_p (int newval, int oldval, int is_first, int is_left) {
+	if (is_first) return newval;
+	if (is_left) return R_MAX (oldval, newval);
+	return R_MIN (oldval, newval);
+}
+
+static int is_valid_pos (const RAGraph *g, int l, int pos) {
+	return pos >= 0 && pos < g->layers[l].n_nodes;
+}
+
+static RGraphNode *get_sibling (const RAGraph *g, const RANode *n, int is_left, int is_adjust_class) {
+	RGraphNode *res = NULL;
+	int pos = n->pos_in_layer;
+
+	if ((is_left && is_adjust_class) || (!is_left && !is_adjust_class))
+		pos++;
+	else pos--;
+
+	if (is_valid_pos (g, n->layer, pos))
+		res = g->layers[n->layer].nodes[pos];
+	return res;
+}
+
+static int adjust_class_val(const RAGraph *g, const RGraphNode *gn, const RGraphNode *sibl, map<const RGraphNode *, int> &res, int is_left) {
+	if (is_left) return res[sibl] - res[gn] - dist_nodes (g, gn, sibl);
+	return res[gn] - res[sibl] - dist_nodes (g, sibl, gn);
+}
+
+static int cmp_dist (const size_t a, const size_t b) {
+	return (int)a < (int)b;
+}
+
+/* adjusts the position of previously placed left/right classes */
+/* tries to place classes as close as possible */
+static void adjust_class (const RAGraph *g, int is_left, vector<RList *> &classes, map<const RGraphNode *, int> &res, int c) {
+	const RGraphNode *gn;
+	const RListIter *it;
+	const RANode *an;
+	int dist, v, is_first = true;
+
+	graph_foreach_anode (classes[c], it, gn, an) {
+		const RGraphNode *sibling;
+		const RANode *sibl_anode;
+
+		sibling = get_sibling (g, an, is_left, true);
+		if (!sibling) continue;
+		sibl_anode = get_anode (sibling);
+		if (sibl_anode->klass == c) continue;
+		v = adjust_class_val (g, gn, sibling, res, is_left);
+		dist = is_first ? v : R_MIN (dist, v);
+		is_first = false;
+	}
+
+	if (is_first) {
+		RList *heap = r_list_new ();
+		int len;
+
+		graph_foreach_anode (classes[c], it, gn, an) {
+			const RList *neigh = r_graph_all_neighbours (g->graph, gn);
+			const RGraphNode *gk;
+			const RListIter *itk;
+			const RANode *ak;
+
+			graph_foreach_anode (neigh, itk, gk, ak) {
+				if (ak->klass < c)
+					r_list_append (heap, (void *)(size_t)(ak->x - an->x));
+			}
+		}
+
+		len = r_list_length (heap);
+		if (len == 0) {
+			dist = 0;
+		} else {
+			r_list_sort (heap, (RListComparator)cmp_dist);
+			dist = (int)(size_t)r_list_get_n (heap, len / 2);
+		}
+
+		r_list_free (heap);
+	}
+
+	graph_foreach_anode (classes[c], it, gn, an) {
+		const int old_val = res[gn];
+		const int new_val = is_left ?  old_val + dist : old_val - dist;
+		res[gn] = new_val;
+	}
+}
+
+/* places left/right the nodes of a class */
+static void place_nodes (const RAGraph *g, const RGraphNode *gn, int is_left, map<const RGraphNode *, RList *> &v_nodes, vector<RList *> &classes, map<const RGraphNode *, int> &res, set<const RGraphNode *> &placed) {
+	const RList *lv = v_nodes[gn];
+	int p = 0, v, is_first = true;
+	const RGraphNode *gk;
+	const RListIter *itk;
+	const RANode *ak;
+
+	graph_foreach_anode (lv, itk, gk, ak) {
+		const RGraphNode *sibling;
+		const RANode *sibl_anode;
+
+		sibling = get_sibling (g, ak, is_left, false);
+		if (!sibling) continue;
+		sibl_anode = get_anode (sibling);
+		if (ak->klass == sibl_anode->klass) {
+			if (placed.count(sibling) == 0) {
+				place_nodes (g, sibling, is_left, v_nodes, classes, res, placed);
+			}
+
+			v = place_nodes_val (g, gk, sibling, res, is_left);
+			p = place_nodes_sel_p (v, p, is_first, is_left);
+			is_first = false;
+		}
+	}
+
+	if (is_first)
+		p = is_left ? 0 : 50;
+
+	graph_foreach_anode (lv, itk, gk, ak) {
+		res[gk] = p;
+		placed.insert(gk);
+	}
+}
+
+/* computes left or right classes, used to place dummies node */
+/* classes respect three properties:
+ * - v E C
+ * - w E C => L(v) is a subset of C
+ * - w E C, the s+(w) exists and is not in any class yet => s+(w) E C */
+static vector<RList *> compute_classes(const RAGraph *g, map<const RGraphNode *, RList *> &v_nodes, int is_left, int *n_classes) {
+	int i, j, c;
+	vector<RList *> res(g->n_layers, NULL);
+	RGraphNode *gn;
+	const RListIter *it;
+	RANode *n;
+
+	graph_foreach_anode (r_graph_get_nodes (g->graph), it, gn, n) {
+		n->klass = -1;
+	}
+
+	for (i = 0; i < g->n_layers; ++i) {
+		c = i;
+
+		for (j = is_left ? 0 : g->layers[i].n_nodes - 1;
+			(is_left && j < g->layers[i].n_nodes) || (!is_left && j >= 0);
+			j = is_left ? j + 1 : j - 1) {
+			const RGraphNode *gj = g->layers[i].nodes[j];
+			const RANode *aj = get_anode (gj);
+
+			if (aj->klass == -1) {
+				const RList *laj = v_nodes[gj];
+
+				if (!res[c]) {
+					res[c] = r_list_new ();
+				}
+
+				graph_foreach_anode (laj, it, gn, n) {
+					r_list_append (res[c], gn);
+					n->klass = c;
+				}
+			} else {
+				c = aj->klass;
+			}
+		}
+	}
+
+	if (n_classes)
+		*n_classes = g->n_layers;
+	return res;
+}
+
+/* computes the position to the left/right of all the nodes */
+static map<const RGraphNode *, int> compute_pos(const RAGraph *g, int is_left, map<const RGraphNode *, RList *> &v_nodes) {
+	map<const RGraphNode *, int> res;
+	set<const RGraphNode *> placed;
+	vector<RList *> classes;
+	int n_classes, i;
+
+	classes = compute_classes (g, v_nodes, is_left, &n_classes);
+
+	for (i = 0; i < n_classes; ++i) {
+		const RGraphNode *gn;
+		const RListIter *it;
+
+		r_list_foreach (classes[i], it, gn) {
+			if (placed.count(gn) == 0) {
+				place_nodes (g, gn, is_left, v_nodes, classes, res, placed);
+			}
+		}
+
+		adjust_class (g, is_left, classes, res, i);
+	}
+
+	for (i = 0; i < n_classes; ++i) {
+		if (classes[i]) {
+			r_list_free (classes[i]);
+		}
+	}
+	return res;
+}
+
+extern "C" {
+
+static int mousemode = 0;
+static const char *mousemodes[] = {
+	"canvas-y",
+	"canvas-x",
+	"node-y",
+	"node-x",
+	NULL
+};
 
 static bool is_offset(const RAGraph *g) {
 	return g->mode == R_AGRAPH_MODE_OFFSET;
@@ -620,71 +936,6 @@ static void minimize_crossings (const RAGraph *g) {
 	} while (cross_changed && max_changes);
 }
 
-static int find_dist (const struct dist_t *a, const struct dist_t *b) {
-	return a->from == b->from && a->to == b->to ? 0 : 1;
-}
-
-/* returns the distance between two nodes */
-/* if the distance between two nodes were explicitly set, returns that;
- * otherwise calculate the distance of two nodes on the same layer */
-static int dist_nodes (const RAGraph *g, const RGraphNode *a, const RGraphNode *b) {
-	struct dist_t d;
-	const RANode *aa, *ab;
-	RListIter *it;
-	int res = 0;
-
-	if (g->dists) {
-		d.from = a;
-		d.to = b;
-		it = r_list_find (g->dists, &d, (RListComparator)find_dist);
-		if (it) {
-			struct dist_t *old = (struct dist_t *)r_list_iter_get_data (it);
-			return old->dist;
-		}
-	}
-
-	aa = get_anode (a);
-	ab = get_anode (b);
-	if (aa && ab && aa->layer == ab->layer) {
-		int i;
-
-		res = aa == ab && !aa->is_reversed ? HORIZONTAL_NODE_SPACING : 0;
-		for (i = aa->pos_in_layer; i < ab->pos_in_layer; ++i) {
-			const RGraphNode *cur = g->layers[aa->layer].nodes[i];
-			const RGraphNode *next = g->layers[aa->layer].nodes[i + 1];
-			const RANode *anext = get_anode (next);
-			const RANode *acur = get_anode (cur);
-			int found = false;
-
-			if (g->dists) {
-				d.from = cur;
-				d.to = next;
-				it = r_list_find (g->dists, &d, (RListComparator)find_dist);
-				if (it) {
-					struct dist_t *old = (struct dist_t *)r_list_iter_get_data (it);
-					res += old->dist;
-					found = true;
-				}
-			}
-
-			if (!found) {
-				int space = HORIZONTAL_NODE_SPACING;
-				if (acur->is_reversed && anext->is_reversed) {
-					if (!acur->is_reversed)
-						res += acur->w / 2;
-					else if (!anext->is_reversed)
-						res += anext->w / 2;
-					res += 1;
-				} else {
-					res += acur->w / 2 + anext->w / 2 + space;
-				}
-			}
-		}
-	}
-
-	return res;
-}
-
 /* explictly set the distance between two nodes on the same layer */
 static void set_dist_nodes (const RAGraph *g, int l, int cur, int next) {
 	struct dist_t *d, find_el;
@@ -710,274 +961,25 @@ static void set_dist_nodes (const RAGraph *g, int l, int cur, int next) {
 		r_list_push (g->dists, d);
 }
 
-static int is_valid_pos (const RAGraph *g, int l, int pos) {
-	return pos >= 0 && pos < g->layers[l].n_nodes;
-}
-
-/* computes the set of vertical classes in the graph */
-/* if v is an original node, L(v) = { v }
- * if v is a dummy node, L(v) is the set of all the dummies node that belongs
- *      to the same long edge */
-static Sdb *compute_vertical_nodes (const RAGraph *g) {
-	Sdb *res = sdb_new0 ();
-	int i, j;
-
-	for (i = 0; i < g->n_layers; ++i) {
-		for (j = 0; j < g->layers[i].n_nodes; ++j) {
-			RGraphNode *gn = g->layers[i].nodes[j];
-			const RList *Ln = hash_get_rlist (res, gn);
-			const RANode *an = get_anode (gn);
-
-			if (!Ln) {
-				RList *vert = r_list_new ();
-				hash_set (res, gn, vert);
-				if (an->is_dummy) {
-					RGraphNode *next = gn;
-					const RANode *anext = get_anode (next);
-
-					while (anext->is_dummy) {
-						r_list_append (vert, next);
-						next = r_graph_nth_neighbour (g->graph, next, 0);
-						if (!next) break;
-						anext = get_anode (next);
-					}
-				} else {
-					r_list_append (vert, gn);
-				}
-			}
-		}
-	}
-
-	return res;
-}
-
-/* computes left or right classes, used to place dummies node */
-/* classes respect three properties:
- * - v E C
- * - w E C => L(v) is a subset of C
- * - w E C, the s+(w) exists and is not in any class yet => s+(w) E C */
-static RList **compute_classes (const RAGraph *g, Sdb *v_nodes, int is_left, int *n_classes) {
-	int i, j, c;
-	RList **res = R_NEWS0 (RList *, g->n_layers);
-	RGraphNode *gn;
-	const RListIter *it;
-	RANode *n;
-
-	graph_foreach_anode (r_graph_get_nodes (g->graph), it, gn, n) {
-		n->klass = -1;
-	}
-
-	for (i = 0; i < g->n_layers; ++i) {
-		c = i;
-
-		for (j = is_left ? 0 : g->layers[i].n_nodes - 1;
-			(is_left && j < g->layers[i].n_nodes) || (!is_left && j >= 0);
-			j = is_left ? j + 1 : j - 1) {
-			const RGraphNode *gj = g->layers[i].nodes[j];
-			const RANode *aj = get_anode (gj);
-
-			if (aj->klass == -1) {
-				const RList *laj = hash_get_rlist (v_nodes, gj);
-
-				if (!res[c])
-					res[c] = r_list_new ();
-				graph_foreach_anode (laj, it, gn, n) {
-					r_list_append (res[c], gn);
-					n->klass = c;
-				}
-			} else {
-				c = aj->klass;
-			}
-		}
-	}
-
-	if (n_classes)
-		*n_classes = g->n_layers;
-	return res;
-}
-
-static int cmp_dist (const size_t a, const size_t b) {
-	return (int)a < (int)b;
-}
-
-static RGraphNode *get_sibling (const RAGraph *g, const RANode *n, int is_left, int is_adjust_class) {
-	RGraphNode *res = NULL;
-	int pos = n->pos_in_layer;
-
-	if ((is_left && is_adjust_class) || (!is_left && !is_adjust_class))
-		pos++;
-	else pos--;
-
-	if (is_valid_pos (g, n->layer, pos))
-		res = g->layers[n->layer].nodes[pos];
-	return res;
-}
-
-static int adjust_class_val (const RAGraph *g, const RGraphNode *gn, const RGraphNode *sibl, Sdb *res, int is_left) {
-	if (is_left) return hash_get_int (res, sibl) - hash_get_int (res, gn) - dist_nodes (g, gn, sibl);
-	return hash_get_int (res, gn) - hash_get_int (res, sibl) - dist_nodes (g, sibl, gn);
-}
-
-/* adjusts the position of previously placed left/right classes */
-/* tries to place classes as close as possible */
-static void adjust_class (const RAGraph *g, int is_left, RList **classes, Sdb *res, int c) {
-	const RGraphNode *gn;
-	const RListIter *it;
-	const RANode *an;
-	int dist, v, is_first = true;
-
-	graph_foreach_anode (classes[c], it, gn, an) {
-		const RGraphNode *sibling;
-		const RANode *sibl_anode;
-
-		sibling = get_sibling (g, an, is_left, true);
-		if (!sibling) continue;
-		sibl_anode = get_anode (sibling);
-		if (sibl_anode->klass == c) continue;
-		v = adjust_class_val (g, gn, sibling, res, is_left);
-		dist = is_first ? v : R_MIN (dist, v);
-		is_first = false;
-	}
-
-	if (is_first) {
-		RList *heap = r_list_new ();
-		int len;
-
-		graph_foreach_anode (classes[c], it, gn, an) {
-			const RList *neigh = r_graph_all_neighbours (g->graph, gn);
-			const RGraphNode *gk;
-			const RListIter *itk;
-			const RANode *ak;
-
-			graph_foreach_anode (neigh, itk, gk, ak) {
-				if (ak->klass < c)
-					r_list_append (heap, (void *)(size_t)(ak->x - an->x));
-			}
-		}
-
-		len = r_list_length (heap);
-		if (len == 0) {
-			dist = 0;
-		} else {
-			r_list_sort (heap, (RListComparator)cmp_dist);
-			dist = (int)(size_t)r_list_get_n (heap, len / 2);
-		}
-
-		r_list_free (heap);
-	}
-
-	graph_foreach_anode (classes[c], it, gn, an) {
-		const int old_val = hash_get_int (res, gn);
-		const int new_val = is_left ?  old_val + dist : old_val - dist;
-		hash_set (res, gn, new_val);
-	}
-}
-
-static int place_nodes_val (const RAGraph *g, const RGraphNode *gn, const RGraphNode *sibl, Sdb *res, int is_left) {
-	if (is_left) return hash_get_int (res, sibl) + dist_nodes (g, sibl, gn);
-	return hash_get_int (res, sibl) - dist_nodes (g, gn, sibl);
-}
-
-static int place_nodes_sel_p (int newval, int oldval, int is_first, int is_left) {
-	if (is_first) return newval;
-	if (is_left) return R_MAX (oldval, newval);
-	return R_MIN (oldval, newval);
-}
-
-/* places left/right the nodes of a class */
-static void place_nodes (const RAGraph *g, const RGraphNode *gn, int is_left, Sdb *v_nodes, RList **classes, Sdb *res, Sdb *placed) {
-	const RList *lv = hash_get_rlist (v_nodes, gn);
-	int p = 0, v, is_first = true;
-	const RGraphNode *gk;
-	const RListIter *itk;
-	const RANode *ak;
-
-	graph_foreach_anode (lv, itk, gk, ak) {
-		const RGraphNode *sibling;
-		const RANode *sibl_anode;
-
-		sibling = get_sibling (g, ak, is_left, false);
-		if (!sibling) continue;
-		sibl_anode = get_anode (sibling);
-		if (ak->klass == sibl_anode->klass) {
-			if (!hash_get (placed, sibling))
-				place_nodes (g, sibling, is_left, v_nodes, classes, res, placed);
-
-			v = place_nodes_val (g, gk, sibling, res, is_left);
-			p = place_nodes_sel_p (v, p, is_first, is_left);
-			is_first = false;
-		}
-	}
-
-	if (is_first)
-		p = is_left ? 0 : 50;
-
-	graph_foreach_anode (lv, itk, gk, ak) {
-		hash_set (res, gk, p);
-		hash_set (placed, gk, true);
-	}
-}
-
-/* computes the position to the left/right of all the nodes */
-static Sdb *compute_pos (const RAGraph *g, int is_left, Sdb *v_nodes) {
-	Sdb *res, *placed;
-	RList **classes;
-	int n_classes, i;
-
-	classes = compute_classes (g, v_nodes, is_left, &n_classes);
-	if (!classes) return NULL;
-
-	res = sdb_new0 ();
-	placed = sdb_new0 ();
-	for (i = 0; i < n_classes; ++i) {
-		const RGraphNode *gn;
-		const RListIter *it;
-
-		r_list_foreach (classes[i], it, gn) {
-			if (!hash_get_rnode (placed, gn)) {
-				place_nodes (g, gn, is_left, v_nodes, classes, res, placed);
-			}
-		}
-
-		adjust_class (g, is_left, classes, res, i);
-	}
-
-	sdb_free (placed);
-	for (i = 0; i < n_classes; ++i) {
-		if (classes[i])
-			r_list_free (classes[i]);
-	}
-	free (classes);
-	return res;
-}
-
 /* calculates position of all nodes, but in particular dummies nodes */
 /* computes two different placements (called "left"/"right") and set the final
  * position of each node to the average of the values in the two placements */
 static void place_dummies (const RAGraph *g) {
 	const RList *nodes;
-	Sdb *xminus, *xplus, *vertical_nodes;
+	map<const RGraphNode *, int> xminus, xplus;
+	map<const RGraphNode *, RList *> vertical_nodes;
 	const RGraphNode *gn;
 	const RListIter *it;
 	RANode *n;
 
 	vertical_nodes = compute_vertical_nodes (g);
-	if (!vertical_nodes) return;
 	xminus = compute_pos (g, true, vertical_nodes);
-	if (!xminus) goto xminus_err;
 	xplus = compute_pos (g, false, vertical_nodes);
-	if (!xplus) goto xplus_err;
 
 	nodes = r_graph_get_nodes (g->graph);
 	graph_foreach_anode (nodes, it, gn, n) {
-		n->x = (hash_get_int (xminus, gn) + hash_get_int (xplus, gn)) / 2;
+		n->x = (xminus[gn] + xplus[gn]) / 2;
 	}
-
-	sdb_free (xplus);
-xplus_err:
-	sdb_free (xminus);
-xminus_err:
-	sdb_free (vertical_nodes);
 }
 
 static RGraphNode *get_right_dummy (const RAGraph *g, const RGraphNode *n) {
@@ -1009,7 +1011,7 @@ static void adjust_directions (const RAGraph *g, int i, int from_up, Sdb *D, Sdb
 		const RANode *wpa, *vpa = get_anode (vp);
 
 		if (!vpa->is_dummy) continue;
-		if (from_up) wp = r_list_get_n (r_graph_innodes (g->graph, vp), 0);
+		if (from_up) wp = (const RGraphNode *)r_list_get_n (r_graph_innodes (g->graph, vp), 0);
 		else wp = r_graph_nth_neighbour (g->graph, vp, 0);
 		wpa = get_anode (wp);
 		if (!wpa->is_dummy) continue;
@@ -1370,7 +1372,7 @@ static void restore_original_edges (const RAGraph *g) {
 
 static void create_edge_from_dummies (const RAGraph *g, RANode *an, RList *toremove) {
 	RGraphNode *n = an->gnode;
-	RGraphNode *from = r_list_get_n (r_graph_innodes (g->graph, n), 0);
+	RGraphNode *from = (RGraphNode *)r_list_get_n (r_graph_innodes (g->graph, n), 0);
 	RANode *a_from = get_anode (from);
 	RListIter *(*add_to_list)(RList *, void *) = NULL;
 	AEdge *e = R_NEW0 (AEdge);
@@ -1437,8 +1439,8 @@ static void analyze_back_edges (const RAGraph *g, RANode *an) {
 
 		tp = r_graph_get_neighbours (g->graph, ak->gnode);
 		if (r_list_length (tp) > 0) {
-			fn = r_list_get_bottom (tp);
-			ln = r_list_get_top (tp);
+			fn = (RGraphNode *)r_list_get_bottom (tp);
+			ln = (RGraphNode *)r_list_get_top (tp);
 			first = get_anode (fn);
 			last = get_anode (ln);
 
@@ -1982,7 +1984,7 @@ static void agraph_print_edge(const RAGraph *g, RANode *a, RANode *b, int nth) {
 	if (it) {
 		int i, len;
 
-		edg = r_list_iter_get_data (it);
+		edg = (AEdge *)r_list_iter_get_data (it);
 		len = r_list_length (edg->x);
 
 		for (i = 0; i < len; ++i) {
@@ -2277,7 +2279,7 @@ static void agraph_free_nodes (const RAGraph *g) {
 }
 
 static void sdb_set_enc (Sdb *db, const char *key, const char *v, ut32 cas) {
-	char *estr = sdb_encode ((const void *)v, -1);
+	char *estr = sdb_encode ((const ut8 *)v, -1);
 	sdb_set (db, key, estr, cas);
 	free (estr);
 }
@@ -2334,7 +2336,7 @@ R_API RANode *r_agraph_add_node(const RAGraph *g, const char *title, const char 
 		len = strlen (b);
 		if (len>0 && b[len-1] == '\n')
 			b[len - 1] = '\0';
-		estr = sdb_encode ((const void *)b, -1);
+		estr = sdb_encode ((const ut8 *)b, -1);
 		s = sdb_fmt (1, "base64:%s", estr);
 		free (estr);
 		free (b);
@@ -2415,7 +2417,7 @@ R_API void r_agraph_foreach_edge(RAGraph *g, RAEdgeCallback cb, void *user) {
 
 R_API RANode *r_agraph_get_first_node(const RAGraph *g) {
 	const RList *l = r_graph_get_nodes (g->graph);
-	RGraphNode *rgn = r_list_first (l);
+	RGraphNode *rgn = (RGraphNode *)r_list_first (l);
 	return get_anode (rgn);
 }
 
@@ -2975,4 +2977,6 @@ R_API int r_core_visual_graph(RCore *core, RAGraph *g, RAnalFunction *_fcn, int 
 		g->can = o_can;
 	}
 	return !is_error;
+}
+
 }
