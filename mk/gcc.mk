@@ -1,6 +1,7 @@
 ifeq (${_INCLUDE_MK_GCC_},)
 _INCLUDE_MK_GCC_=1
 CC?=gcc
+CPP=g++
 LINK=
 RANLIB=ranlib
 ONELIB=0
@@ -36,4 +37,5 @@ endif
 #LDFLAGS_SONAME=-D_
 
 CC_LIB=${CC} ${LDFLAGS_LIB} -o ${LIBSO}
+CPP_LIB=${CPP} ${LDFLAGS_LIB} -o ${LIBSO}
 endif

@@ -78,8 +78,8 @@ $(LIBSO): $(EXTRA_TARGETS) ${WFD} ${OBJS} ${SHARED_OBJ}
 	  if [ $$do = 1 ]; then \
 	    [ -n "${SILENT}" ] && \
 	    echo "LD $(LIBSO)" || \
-	    echo "${CC_LIB} ${LIBNAME} ${OBJS} ${SHARED_OBJ} ${LINK} ${LDFLAGS}" ; \
-	    ${CC_LIB} ${LIBNAME} ${CFLAGS} ${OBJS} ${SHARED_OBJ} ${LINK} ${LDFLAGS} || exit 1; \
+	    echo "${CPP_LIB} ${LIBNAME} ${OBJS} ${SHARED_OBJ} ${LINK} ${LDFLAGS}" ; \
+	    ${CPP_LIB} ${LIBNAME} ${CFLAGS} ${OBJS} ${SHARED_OBJ} ${LINK} ${LDFLAGS} || exit 1; \
 	    [ -f "$(LIBR)/stripsyms.sh" ] && sh $(LIBR)/stripsyms.sh ${LIBSO} ${NAME} ; \
 	  break ; \
 	fi ; done
