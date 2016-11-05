@@ -52,7 +52,7 @@ static int __core_patch_bracket(RCore *core, const char *str, ut64 *noff) {
 		}
 		if (*str == '}')
 			break;
-		if ((q = strstr (str, "${"))) {
+		if ((q = (char *)strstr (str, "${"))) {
 			char *end = strchr (q+2,'}');
 			if (end) {
 				*q = *end = 0;

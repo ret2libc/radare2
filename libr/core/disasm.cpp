@@ -1852,12 +1852,12 @@ static int ds_print_meta_infos(RDisasmState *ds, ut8* buf, int len, int idx) {
 			MI.from = ds->at;
 			MI.to = ds->at + MI.size;
 			if (metas) {
-				p = strchr (metas, ',');
+				p = (char *)strchr (metas, ',');
 				if (!p) {
 					continue;
 				}
 				MI.space = atoi (p + 1);
-				q = strchr (p + 1, ',');
+				q = (char *)strchr (p + 1, ',');
 				if (!q) {
 					continue;
 				}
@@ -2030,7 +2030,7 @@ static void ds_cdiv_optimization(RDisasmState *ds) {
 	case R_ANAL_OP_TYPE_MUL:
 		esil = R_STRBUF_SAFEGET (&ds->analop.esil);
 		while (esil) {
-			comma = strstr (esil, ",");
+			comma = (char *)strstr (esil, ",");
 			if (!comma) {
 				break;
 			}
