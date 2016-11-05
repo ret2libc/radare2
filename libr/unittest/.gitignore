@@ -1,0 +1,11 @@
+test_base64
+test_bitmap
+test_debruijn
+test_glob
+test_hashtable
+test_list
+test_queue
+test_range
+test_stack
+test_str
+test_tree

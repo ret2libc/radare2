@@ -208,5 +208,8 @@ clean:
 mrproper:
 	for LIB in ${LIBS}; do ( cd $${LIB} && ${MAKE} mrproper ); done
 
-.PHONY: sloc mrproper clean pkgcfg install deinstall uninstall libr
+unittest:
+	${MAKE} -C unittest run
+
+.PHONY: sloc mrproper clean pkgcfg install deinstall uninstall libr unittest
 .PHONY: install-includes install-pkgconfig install-symlink all
