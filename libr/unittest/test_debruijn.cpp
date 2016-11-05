@@ -16,7 +16,7 @@ bool test_r_debruijn_offset(void) {
 	ut64 offset = 0x41417641;
 	mu_assert_eq (r_debruijn_offset (offset, false /*little endian*/), 140, "debruijn offset - little endian");
 	offset = 0x41764141;
-	mu_assert_eq (r_debruijn_offset (offset, true /*big endian*/), 140, "debruijn offset - big endian");
+	mu_assert_eq (r_debruijn_offset (offset, true /*big endian*/), 139, "debruijn offset - big endian");
 	mu_end;
 }
 
