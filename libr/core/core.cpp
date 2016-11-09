@@ -1171,7 +1171,7 @@ static char *getbitfield(void *_core, const char *name, ut64 val) {
 	isenum = sdb_const_get (core->anal->sdb_types, name, 0);
 	if (isenum && !strcmp (isenum, "enum")) {
 		int isFirst = true;
-		ret = r_str_concatf (ret, "0x%08"PFMT64x" : ", val);
+		ret = r_str_concatf (ret, "0x%08" PFMT64x " : ", val);
 		for (i = 0; i < 32; i++) {
 			if (!(val & (1 << i))) {
 				continue;
@@ -1314,7 +1314,7 @@ static char *r_core_anal_hasrefs_to_depth(RCore *core, ut64 value, int depth) {
 			ut64 *n64 = (ut64*)buf;
 			r_io_read_at (core->io, value, buf, sizeof (buf));
 			ut64 n = (core->assembler->bits == 64)? *n64: *n32;
-			r_strbuf_appendf (s, " 0x%"PFMT64x, n);
+			r_strbuf_appendf (s, " 0x%" PFMT64x, n);
 		}
 	}
 	{
@@ -2207,7 +2207,7 @@ R_API int r_core_search_cb(RCore *core, ut64 from, ut64 to, RCoreSearchCallback 
 				len = (int)delta;
 			}
 			if (!r_io_read_at (core->io, from, buf, len)) {
-				eprintf ("Cannot read at 0x%"PFMT64x"\n", from);
+				eprintf ("Cannot read at 0x%" PFMT64x "\n", from);
 				break;
 			}
 			for (ret = 0; ret < len;) {

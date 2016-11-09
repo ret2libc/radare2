@@ -38,8 +38,8 @@ using std::vector;
 #define BODY_OFFSETS	0x1
 #define BODY_SUMMARY	0x2
 
-#define hash_set(sdb,k,v) (sdb_num_set (sdb, sdb_fmt (0, "%"PFMT64u, (ut64)(size_t)k), (ut64)(size_t)v, 0))
-#define hash_get(sdb,k) (sdb_num_get (sdb, sdb_fmt (0, "%"PFMT64u, (ut64)(size_t)k), NULL))
+#define hash_set(sdb,k,v) (sdb_num_set (sdb, sdb_fmt (0, "%" PFMT64u, (ut64)(size_t)k), (ut64)(size_t)v, 0))
+#define hash_get(sdb,k) (sdb_num_get (sdb, sdb_fmt (0, "%" PFMT64u, (ut64)(size_t)k), NULL))
 #define hash_get_rnode(sdb,k) ((RGraphNode *)(size_t)hash_get (sdb, k))
 #define hash_get_rlist(sdb,k) ((RList *)(size_t)hash_get (sdb, k))
 #define hash_get_int(sdb,k) ((int)hash_get (sdb, k))
@@ -447,7 +447,7 @@ static int mode2opts(const RAGraph *g) {
 }
 
 static char *get_title (ut64 addr) {
-	return r_str_newf ("0x%"PFMT64x, addr);
+	return r_str_newf ("0x%" PFMT64x, addr);
 }
 
 static void update_node_dimension(const RGraph *g, int is_small, int zoom) {
@@ -1578,7 +1578,7 @@ static char *get_body(RCore *core, ut64 addr, int size, int opts) {
 		r_config_set_i (core->config, "asm.offset", false);
 	}
 	body = r_core_cmd_strf (core,
-		"%s %d @ 0x%08"PFMT64x, cmd, size, addr);
+		"%s %d @ 0x%08" PFMT64x, cmd, size, addr);
 
 	// restore original options
 	core->print->cur_enabled = o_cursor;
@@ -2091,7 +2091,7 @@ static void agraph_prev_node(RAGraph *g) {
 static void agraph_update_title (RAGraph *g, RAnalFunction *fcn) {
 	const char *mode_str = g->is_callgraph ? mode2str (g, "CG") : mode2str (g, "BB");
 	char *new_title = r_str_newf (
-			"[0x%08"PFMT64x"]> VV @ %s (nodes %d edges %d zoom %d%%) %s mouse:%s movements-speed:%d",
+			"[0x%08" PFMT64x "]> VV @ %s (nodes %d edges %d zoom %d%%) %s mouse:%s movements-speed:%d",
 			fcn->addr, fcn->name, g->graph->n_nodes, g->graph->n_edges,
 			g->zoom, mode_str, mousemodes[mousemode], g->movspeed);
 	r_agraph_set_title (g, new_title);

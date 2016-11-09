@@ -1006,7 +1006,7 @@ static int cb_iobuffer(void *user, void *data) {
 		to = r_config_get_i (core->config, "io.buffer.to");
 		if (from>=to) {
 			eprintf ("ERROR: io.buffer.from >= io.buffer.to"
-					" (0x%"PFMT64x" >= 0x%"PFMT64x")\n", from, to);
+					" (0x%" PFMT64x " >= 0x%" PFMT64x ")\n", from, to);
 		} else r_io_buffer_load (core->io, from, (int)(to-from));
 	} else {
 		r_io_buffer_close (core->io);
@@ -1548,15 +1548,15 @@ static int cb_linesto(void *user, void *data) {
 		return false;
 	}
 	if (to > from+io_sz) {
-		eprintf ("ERROR: \"lines.to\" can't exceed addr 0x%08"PFMT64x
-			" 0x%08"PFMT64x" %d\n", from, to, io_sz);
+		eprintf ("ERROR: \"lines.to\" can't exceed addr 0x%08" PFMT64x
+			" 0x%08" PFMT64x " %d\n", from, to, io_sz);
 		return true;
 	}
 	if (to > from) {
 		core->print->lines_cache_sz = r_core_lines_initcache (core, from, to);
 		//if (core->print->lines_cache_sz == -1) { eprintf ("ERROR: Can't allocate memory\n"); }
 	} else {
-		eprintf ("Invalid range 0x%08"PFMT64x" .. 0x%08"PFMT64x"\n", from, to);
+		eprintf ("Invalid range 0x%08" PFMT64x " .. 0x%08" PFMT64x "\n", from, to);
 	}
 	return true;
 }
@@ -1818,7 +1818,7 @@ R_API int r_core_config_init(RCore *core) {
 #if __WINDOWS__
 	SETPREF("dir.plugins", "plugins", "Path to plugin files to be loaded at startup");
 #else
-	SETPREF("dir.plugins", R2_LIBDIR"/radare2/"R2_VERSION"/", "Path to plugin files to be loaded at startup");
+	SETPREF("dir.plugins", R2_LIBDIR "/radare2/" R2_VERSION "/", "Path to plugin files to be loaded at startup");
 #endif
 	SETCB("dir.source", "", &cb_dirsrc, "Path to find source files");
 	SETPREF("dir.types", "/usr/include", "Default path to look for cparse type files");
@@ -1827,7 +1827,7 @@ R_API int r_core_config_init(RCore *core) {
 #elif __WINDOWS__
 	SETPREF("dir.projects", "~\\"R2_HOMEDIR"\\projects", "Default path for projects");
 #else
-	SETPREF("dir.projects", "~/"R2_HOMEDIR"/projects", "Default path for projects");
+	SETPREF("dir.projects", "~/" R2_HOMEDIR "/projects", "Default path for projects");
 #endif
 	SETPREF("stack.bytes", "true", "Show bytes instead of words in stack");
 	SETPREF("stack.anotated", "false", "Show anotated hexdump in visual debug");

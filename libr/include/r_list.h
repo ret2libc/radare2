@@ -6,6 +6,9 @@
 #include <ht.h>
 
 #ifdef __cplusplus
+#ifndef typeof
+#define typeof decltype
+#endif
 extern "C" {
 #endif
 

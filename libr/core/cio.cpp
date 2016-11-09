@@ -98,7 +98,7 @@ R_API int r_core_dump(RCore *core, const char *file, ut64 addr, ut64 size, int a
 			break;
 		}
 	}
-	eprintf ("dumped 0x%"PFMT64x" bytes\n", i);
+	eprintf ("dumped 0x%" PFMT64x " bytes\n", i);
 	r_cons_break_end ();
 	fclose (fd);
 	free (buf);

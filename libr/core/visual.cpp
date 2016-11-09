@@ -145,7 +145,7 @@ static int zoom = 0;
 
 R_API int r_core_visual_hud(RCore *core) {
 	const char *c = r_config_get (core->config, "hud.path");
-	const char *f = R2_LIBDIR"/radare2/"R2_VERSION"/hud/main";
+	const char *f = R2_LIBDIR "/radare2/" R2_VERSION "/hud/main";
 	int use_color = core->print->flags & R_PRINT_FLAGS_COLOR;
 	char *homehud = r_str_home (R2_HOMEDIR"/hud");
 	char *res = NULL;
@@ -337,7 +337,7 @@ static int visual_nkey(RCore *core, int ch) {
 		else {
 			if (core->print->cur_enabled) {
 				// dcu 0xaddr
-				r_core_cmdf (core, "dcu 0x%08"PFMT64x, core->offset + core->print->cur);
+				r_core_cmdf (core, "dcu 0x%08" PFMT64x, core->offset + core->print->cur);
 				core->print->cur_enabled = 0;
 			}
 		}
@@ -700,9 +700,9 @@ repeat:
 	if ((xrefs = r_anal_xref_get (core->anal, addr))) {
 		r_cons_clear00 ();
 		r_cons_gotoxy (1, 1);
-		r_cons_printf ("[GOTO XREF]> 0x%08"PFMT64x"\n", addr);
+		r_cons_printf ("[GOTO XREF]> 0x%08" PFMT64x "\n", addr);
 		if (r_list_empty (xrefs)) {
-			r_cons_printf ("No XREF found at 0x%"PFMT64x"\n", addr);
+			r_cons_printf ("No XREF found at 0x%" PFMT64x "\n", addr);
 			r_cons_any_key (NULL);
 			r_cons_clear00 ();
 		} else {
@@ -726,13 +726,13 @@ repeat:
 							refi->type==R_ANAL_REF_TYPE_CALL?"CODE (CALL)":"DATA", refi->addr,
 							fun?fun->name:"unk");
 #endif
-					r_cons_printf (" %d [%s] 0x%08"PFMT64x" %s XREF (%s)\n",
+					r_cons_printf (" %d [%s] 0x%08" PFMT64x " %s XREF (%s)\n",
 							idx, cstr, refi->addr,
 							refi->type==R_ANAL_REF_TYPE_CODE?"CODE (JMP)":
 							refi->type==R_ANAL_REF_TYPE_CALL?"CODE (CALL)":"DATA",
 							fun?fun->name:"unk");
 					if (idx == skip) {
-						r_core_cmdf (core, "pd 20 @ 0x%08"PFMT64x, refi->addr);
+						r_core_cmdf (core, "pd 20 @ 0x%08" PFMT64x, refi->addr);
 						r_cons_column (60);
 					}
 					if (++count >= lines) {
@@ -764,13 +764,13 @@ repeat:
 	} else if (ch == ' ' || ch == '\n' || ch == '\r') {
 		refi = (RAnalRef *)r_list_get_n (xrefs, skip);
 		if (refi) {
-			r_core_cmdf (core, "s 0x%"PFMT64x, refi->addr);
+			r_core_cmdf (core, "s 0x%" PFMT64x, refi->addr);
 			ret = 1;
 		}
 	} else if (ch >= '0' && ch <= '9') {
 		refi = (RAnalRef *)r_list_get_n (xrefs, ch - 0x30);
 		if (refi) {
-			r_core_cmdf (core, "s 0x%"PFMT64x, refi->addr);
+			r_core_cmdf (core, "s 0x%" PFMT64x, refi->addr);
 			ret = 1;
 		}
 	}
@@ -800,7 +800,7 @@ R_API int r_core_visual_xrefs_X (RCore *core) {
 		r_cons_gotoxy (1, 1);
 		r_cons_printf ("[GOTO REF]> \n");
 		if (r_list_empty (fun->refs)) {
-			r_cons_printf ("\tNo REF found at 0x%"PFMT64x"\n", addr);
+			r_cons_printf ("\tNo REF found at 0x%" PFMT64x "\n", addr);
 			r_cons_any_key (NULL);
 			r_cons_clear00 ();
 		} else {
@@ -809,7 +809,7 @@ R_API int r_core_visual_xrefs_X (RCore *core) {
 				if (f) {
 					eprintf ("%s\n", f->name);
 				}
-				r_cons_printf (" [%i] 0x%08"PFMT64x" %s XREF 0x%08"PFMT64x" (%s)(%s)  \n", count,
+				r_cons_printf (" [%i] 0x%08" PFMT64x " %s XREF 0x%08" PFMT64x " (%s)(%s)  \n", count,
 					refi->at,
 					      refi->type==R_ANAL_REF_TYPE_CODE?"CODE (JMP)":
 					      refi->type==R_ANAL_REF_TYPE_CALL?"CODE (CALL)":"DATA", refi->addr, fun->name, f?f->name:"");
@@ -825,7 +825,7 @@ R_API int r_core_visual_xrefs_X (RCore *core) {
 		if (ch >= '0' && ch <= '9') {
 			refi = (RAnalRef *)r_list_get_n (fun->refs, ch-0x30);
 			if (refi) {
-				r_core_cmdf (core, "s 0x%"PFMT64x, refi->addr);
+				r_core_cmdf (core, "s 0x%" PFMT64x, refi->addr);
 				ret = 1;
 			}
 		}
@@ -862,7 +862,7 @@ char *getcommapath(RCore *core) {
 	if (dir && *dir && prj && *prj) {
 		char *abspath = r_file_abspath (dir);
 		/* use prjdir as base directory for comma-ent files */
-		cwd = r_str_newf ("%s"R_SYS_DIR"%s.d", abspath, prj);
+		cwd = r_str_newf ("%s" R_SYS_DIR "%s.d", abspath, prj);
 		free (abspath);
 	} else {
 		/* use cwd as base directory for comma-ent files */
@@ -897,7 +897,7 @@ static void visual_comma(RCore *core) {
 		free (fn);
 	}
 	if (cmtfile) {
-		char *cwf = r_str_newf ("%s"R_SYS_DIR"%s", cwd, cmtfile);
+		char *cwf = r_str_newf ("%s" R_SYS_DIR "%s", cwd, cmtfile);
 		char *odata = r_file_slurp (cwf, NULL);
 		char *data = r_core_editor (core, NULL, odata);
 		r_file_dump (cwf, (const ut8*)data, -1, 0);
@@ -1374,9 +1374,9 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			} else if (*n=='.') {
 				if (n[1]=='-') {
 					//unset
-					r_core_cmdf (core, "f.-%s@0x%"PFMT64x, n+1, core->offset+min);
+					r_core_cmdf (core, "f.-%s@0x%" PFMT64x, n+1, core->offset+min);
 				} else {
-					r_core_cmdf (core, "f.%s@0x%"PFMT64x, n+1, core->offset+min);
+					r_core_cmdf (core, "f.%s@0x%" PFMT64x, n+1, core->offset+min);
 				}
 			} else if (*n=='-') {
 				if (*n) r_flag_unset_name (core->flags, n+1);
@@ -1734,7 +1734,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			if (r_config_get_i (core->config, "cfg.debug")) {
 				if (core->print->cur_enabled) {
 					// dcu 0xaddr
-					r_core_cmdf (core, "dcu 0x%08"PFMT64x, core->offset + core->print->cur);
+					r_core_cmdf (core, "dcu 0x%08" PFMT64x, core->offset + core->print->cur);
 					core->print->cur_enabled = 0;
 				} else {
 					r_core_cmd (core, "ds", 0);
@@ -1863,7 +1863,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 		break;
 	case '*':
 		if (core->print->cur_enabled) {
-			r_core_cmdf (core, "dr PC=0x%08"PFMT64x, core->offset + core->print->cur);
+			r_core_cmdf (core, "dr PC=0x%08" PFMT64x, core->offset + core->print->cur);
 		} else if (!autoblocksize) {
 			r_core_block_size (core, core->blocksize+cols);
 		}
@@ -1886,7 +1886,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			ut64 addr = r_debug_reg_get (core->dbg, "PC");
 			if (addr) {
 				r_core_seek (core, addr, 1);
-				r_core_cmdf (core, "ar `arn PC`=0x%"PFMT64x, addr);
+				r_core_cmdf (core, "ar `arn PC`=0x%" PFMT64x, addr);
 			} else {
 				r_core_seek (core, r_num_get (core->num, "entry0"), 1);
 				//r_core_cmd (core, "s entry0", 0);
@@ -1917,7 +1917,7 @@ R_API int r_core_visual_cmd(RCore *core, int ch) {
 			if (core->print->cur_enabled) {
 				addr += core->print->cur;
 				r_core_seek (core, addr, 0);
-				r_core_cmdf (core, "s 0x%"PFMT64x, addr);
+				r_core_cmdf (core, "s 0x%" PFMT64x, addr);
 			}
 			if (!strcmp (buf + i, "-")) {
 				strcpy (buf, "CC-");
@@ -2095,7 +2095,7 @@ R_API void r_core_visual_title (RCore *core, int color) {
 		if (f) {
 			if (f->offset == addr || !f->offset)
 				snprintf (pos, sizeof (pos), "@ %s", f->name);
-			else snprintf (pos, sizeof (pos), "@ %s+%d # 0x%"PFMT64x,
+			else snprintf (pos, sizeof (pos), "@ %s+%d # 0x%" PFMT64x,
 				f->name, (int)(addr-f->offset), addr);
 		} else pos[0] = 0;
 	}
@@ -2124,17 +2124,17 @@ R_API void r_core_visual_title (RCore *core, int color) {
 		}
 	}
 	if (__ime) {
-		snprintf (foo, sizeof (foo), "[0x%08"PFMT64x" + %d> * INSERT MODE *\n",
+		snprintf (foo, sizeof (foo), "[0x%08" PFMT64x " + %d> * INSERT MODE *\n",
 				core->offset, core->print->cur);
 	} else {
 		if (core->print->cur_enabled) {
-			snprintf (foo, sizeof (foo), "[0x%08"PFMT64x" %s%d (0x%x:%d=%d)]> %s %s\n",
+			snprintf (foo, sizeof (foo), "[0x%08" PFMT64x " %s%d (0x%x:%d=%d)]> %s %s\n",
 					core->offset, pcs, core->blocksize,
 					core->print->cur, core->print->ocur, core->print->ocur==-1?
 						1:R_ABS (core->print->cur-core->print->ocur)+1,
 					bar, pos);
 		} else {
-			snprintf (foo, sizeof (foo), "[0x%08"PFMT64x" %s%d %s]> %s %s\n",
+			snprintf (foo, sizeof (foo), "[0x%08" PFMT64x " %s%d %s]> %s %s\n",
 					core->offset, pcs, core->blocksize, filename, bar, pos);
 		}
 	}
@@ -2235,7 +2235,7 @@ static void visual_refresh(RCore *core) {
 		r_core_cmd0 (core, zoom ? "pz" : printfmt[PIDX]);
 	}
 	if (core->print->screen_bounds != 1LL) {
-		r_cons_printf ("[0x%08"PFMT64x"..0x%08"PFMT64x"]\n",
+		r_cons_printf ("[0x%08" PFMT64x "..0x%08" PFMT64x "]\n",
 			core->offset, core->print->screen_bounds);
 	}
 	blocksize = core->num->value? core->num->value : core->blocksize;

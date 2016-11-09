@@ -224,14 +224,14 @@ R_API void r_anal_type_match(RCore *core, RAnalFunction *fcn) {
 	r_cons_break (NULL, NULL);
 	while (!r_cons_is_breaked ()) {
 		RAnalOp *op = r_core_anal_op (core, addr);
-		int loop_count = sdb_num_get ( core->anal->esil->db_trace, sdb_fmt (-1, "0x%"PFMT64x".count", addr), 0);
+		int loop_count = sdb_num_get ( core->anal->esil->db_trace, sdb_fmt (-1, "0x%" PFMT64x ".count", addr), 0);
 		if (loop_count > LOOP_MAX) {
 			eprintf ("Unfortunately your evilly engineered %s function trapped my most innocent `aftm` in an infinite loop.\n", fcn->name);
 			eprintf ("I kept trace log for you to review and find out how bad things were going to happen by yourself.\n");
 			eprintf ("You can view this log by `ate`. Meanwhile, I will train on how to behave with such behaviour without bothering you.\n");
 			return;
 		}
-		sdb_num_set (core->anal->esil->db_trace, sdb_fmt (-1, "0x%"PFMT64x".count", addr), loop_count + 1, 0);
+		sdb_num_set (core->anal->esil->db_trace, sdb_fmt (-1, "0x%" PFMT64x ".count", addr), loop_count + 1, 0);
 		if (!op || op->type == R_ANAL_OP_TYPE_RET) {
 			r_anal_emul_restore (core, esil_var);
 			return;
@@ -242,7 +242,7 @@ R_API void r_anal_type_match(RCore *core, RAnalFunction *fcn) {
 			if (fcn_call) {
 				type_match (core, addr, fcn_call->name);
 			} else {
-				eprintf ("Cannot find function at 0x%08"PFMT64x"\n", op->jump);
+				eprintf ("Cannot find function at 0x%08" PFMT64x "\n", op->jump);
 			}
 			addr += op->size;
 			r_anal_op_free (op);

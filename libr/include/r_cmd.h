@@ -10,12 +10,12 @@ extern "C" {
 
 //R_LIB_VERSION_HEADER (r_cmd);
 
+#define r_cmd_callback(x) int (*x)(void *data, const char *input)
+#define r_cmd_nullcallback(x) int (*x)(void *data)
+
 #define MACRO_LIMIT 1024
 #define MACRO_LABELS 20
 #define R_CMD_MAXLEN 4096
-
-#define r_cmd_callback(x) int (*x)(void *data, const char *input)
-#define r_cmd_nullcallback(x) int (*x)(void *data)
 
 typedef struct r_cmd_macro_label_t {
 	char name[80];
@@ -91,7 +91,6 @@ R_API int r_cmd_set_data(RCmd *cmd, void *data);
 R_API int r_cmd_add(RCmd *cmd, const char *command, const char *desc, r_cmd_callback(callback));
 R_API int r_core_del(RCmd *cmd, const char *command);
 R_API int r_cmd_call(RCmd *cmd, const char *command);
-R_API char **r_cmd_args(RCmd *cmd, int *argc);
 
 /* r_cmd_macro */
 R_API void r_cmd_macro_init(RCmdMacro *mac);

@@ -1,13 +1,19 @@
 /* radare - LGPL - Copyright 2009-2016 - pancake */
 
-extern "C" {
+#include "r_cmd.hpp"
 
+extern "C" {
 #include <r_cmd.h>
 #include <r_util.h>
 #include <stdio.h>
 #include <r_cons.h>
 #include <r_cmd.h>
 #include <r_util.h>
+}
+
+
+
+extern "C" {
 
 static int value = 0;
 
