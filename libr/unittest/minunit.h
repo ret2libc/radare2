@@ -6,6 +6,8 @@
 #ifndef TERMCOLOR_H
 #define TERMCOLOR_H
 
+#include "stdio.h"
+
 #define TRED     "\x1b[31m"
 #define TGREEN   "\x1b[32m"
 #define TYELLOW  "\x1b[33m"

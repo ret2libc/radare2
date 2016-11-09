@@ -52,13 +52,6 @@ typedef struct r_cmd_item_t {
 	r_cmd_callback (callback);
 } RCmdItem;
 
-typedef struct r_cmd_long_item_t {
-	char cmd[64]; /* long command */
-	int cmd_len;
-	char cmd_short[32]; /* short command */
-	char desc[128];
-} RCmdLongItem;
-
 typedef struct r_cmd_alias_t {
 	int count;
 	char **keys;
@@ -96,10 +89,8 @@ R_API RCmd *r_cmd_new(void);
 R_API RCmd *r_cmd_free(RCmd *cmd);
 R_API int r_cmd_set_data(RCmd *cmd, void *data);
 R_API int r_cmd_add(RCmd *cmd, const char *command, const char *desc, r_cmd_callback(callback));
-R_API int r_cmd_add_long(RCmd *cmd, const char *longcmd, const char *shortcmd, const char *desc);
 R_API int r_core_del(RCmd *cmd, const char *command);
 R_API int r_cmd_call(RCmd *cmd, const char *command);
-R_API int r_cmd_call_long(RCmd *cmd, const char *input);
 R_API char **r_cmd_args(RCmd *cmd, int *argc);
 
 /* r_cmd_macro */

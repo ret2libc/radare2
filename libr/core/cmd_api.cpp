@@ -1,5 +1,7 @@
 /* radare - LGPL - Copyright 2009-2016 - pancake */
 
+extern "C" {
+
 #include <r_cmd.h>
 #include <r_util.h>
 #include <stdio.h>
@@ -28,7 +30,8 @@ R_API RCmd *r_cmd_new () {
 	for (i = 0; i < NCMDS; i++) {
 		cmd->cmds[i] = NULL;
 	}
-	cmd->nullcallback = cmd->data = NULL;
+	cmd->nullcallback = (int (*)(void *))NULL;
+	cmd->data = NULL;
 	r_core_plugin_init (cmd);
 	r_cmd_macro_init (&cmd->macro);
 	r_cmd_alias_init (cmd);
@@ -145,21 +148,6 @@ R_API int r_cmd_set_data(RCmd *cmd, void *data) {
 	return 1;
 }
 
-R_API int r_cmd_add_long(RCmd *cmd, const char *lcmd, const char *scmd, const char *desc) {
-	RCmdLongItem *item = R_NEW (RCmdLongItem);
-	if (!item)
-		return false;
-	strncpy (item->cmd, lcmd, sizeof (item->cmd)-1);
-	strncpy (item->cmd_short, scmd, sizeof (item->cmd_short)-1);
-	item->cmd_len = strlen (lcmd);
-	strncpy (item->desc, desc, sizeof (item->desc)-1);
-	if (!r_list_append (cmd->lcmds, item)){
-		free (item);
-		return false;
-	}
-	return true;
-}
-
 R_API int r_cmd_add(RCmd *c, const char *cmd, const char *desc, r_cmd_callback(cb)) {
 	struct r_cmd_item_t *item;
 	int idx = (ut8)cmd[0];
@@ -217,37 +205,13 @@ R_API int r_cmd_call(RCmd *cmd, const char *input) {
 	return ret;
 }
 
-R_API int r_cmd_call_long(RCmd *cmd, const char *input) {
-	char *inp;
-	RListIter *iter;
-	RCmdLongItem *c;
-	int ret, inplen = strlen (input)+1;
-
-	r_list_foreach (cmd->lcmds, iter, c) {
-		if (inplen>=c->cmd_len && !r_str_cmp (input, c->cmd, c->cmd_len)) {
-			int lcmd = strlen (c->cmd_short);
-			int linp = strlen (input+c->cmd_len);
-			/// SLOW malloc on most situations. use stack
-			inp = malloc (lcmd+linp+2); // TODO: use static buffer with R_CMD_MAXLEN
-			if (!inp)
-				return -1;
-			memcpy (inp, c->cmd_short, lcmd);
-			memcpy (inp+lcmd, input+c->cmd_len, linp+1);
-			ret = r_cmd_call (cmd, inp);
-			free (inp);
-			return ret;
-		}
-	}
-	return -1;
-}
-
 /** macro.c **/
 
 R_API void r_cmd_macro_init(RCmdMacro *mac) {
 	mac->counter = 0;
 	mac->_brk_value = 0;
 	mac->brk_value = &mac->_brk_value;
-	mac->cb_printf = (void*)printf;
+	mac->cb_printf = (PrintfCallback)printf;
 	mac->num = NULL;
 	mac->user = NULL;
 	mac->cmd = NULL;
@@ -693,4 +657,6 @@ R_API int r_cmd_macro_break(RCmdMacro *mac, const char *value) {
 	if (value && *value)
 		mac->brk_value = &mac->_brk_value;
 	return 0;
+}
+
 }
