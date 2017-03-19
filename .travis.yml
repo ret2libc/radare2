@@ -50,7 +50,7 @@ script:
   - VERBOSE=1 make -k all
   - make unit_tests
 
-notifications:
-  irc: "chat.freenode.net#radare"
-  on_success: never
-  on_failure: always
+# notifications:
+  # irc: "chat.freenode.net#radare"
+  # on_success: never
+  # on_failure: always
