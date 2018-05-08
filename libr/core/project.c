@@ -675,12 +675,6 @@ static bool projectSaveScript(RCore *core, const char *file, int opts) {
 		r_core_cmd (core, "fz*", 0);
 		r_cons_flush ();
 	}
-	if (opts & R_CORE_PRJ_SECTIONS) {
-		r_str_write (fd, "# sections\n");
-		r_core_cmd (core, "S*", 0);
-		// __section_list_for_projects (core->io, core->print);
-		// r_cons_flush ();
-	}
 	if (opts & R_CORE_PRJ_META) {
 		r_str_write (fd, "# meta\n");
 		r_meta_list (core->anal, R_META_TYPE_ANY, 1);

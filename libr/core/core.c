@@ -703,7 +703,6 @@ static const char *radare_argv[] = {
 	"db ", "db-", "dbd", "dbe", "dbs", "dbte", "dbtd", "dbts",
 	"dp", "dr", "dcu", "dmd", "dmp", "dml",
 	"ec","ecs", "eco",
-	"S", "S.", "S*", "S-", "S=", "Sa", "Sa-", "Sd", "Sl", "SSj", "Sr",
 	"s", "s+", "s++", "s-", "s--", "s*", "sa", "sb", "sr",
 	"!", "!!",
 	"#sha1", "#crc32", "#pcprint", "#sha256", "#sha512", "#md4", "#md5",
@@ -1083,8 +1082,6 @@ static int autocomplete(RLine *line) {
 		|| !strncmp (line->buffer.data, "ls ", 3)
 		|| !strncmp (line->buffer.data, "wF ", 3)
 		|| !strncmp (line->buffer.data, "wp ", 3)
-		|| !strncmp (line->buffer.data, "Sd ", 3)
-		|| !strncmp (line->buffer.data, "Sl ", 3)
 		|| !strncmp (line->buffer.data, "to ", 3)
 		|| !strncmp (line->buffer.data, "pm ", 3)
 		|| !strncmp (line->buffer.data, "/m ", 3)
