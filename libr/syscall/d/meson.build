@@ -37,7 +37,7 @@ foreach file : sdb_files
     output: outfile_tmp,
     command: sdbtmp_gen_cmd,
     build_by_default: true,
-    build_always: false,
+    build_always_stale: false,
     install: false
   )
 
@@ -48,7 +48,7 @@ foreach file : sdb_files
     command: sdb_gen_cmd,
     depends: sdb_exe,
     build_by_default: true,
-    build_always: false,
+    build_always_stale: false,
     install: true,
     install_dir: join_paths(r2_sdb, 'syscall')
   )

@@ -1,4 +1,4 @@
-project('radare2', 'c', meson_version: '>=0.46.0')
+project('radare2', 'c', meson_version: '>=0.47.0')
 
 py3_exe = import('python3').find_python()
 git_exe = find_program('git', required: false)

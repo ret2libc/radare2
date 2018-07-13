@@ -508,7 +508,7 @@ custom_target('libr_shlr',
   output: 'libr_shlr.a',
   command: cmd,
   build_by_default: true,
-  build_always: false,
+  build_always_stale: false,
   install: true,
   install_dir: get_option('libdir')
 )

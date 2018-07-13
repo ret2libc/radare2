@@ -17,7 +17,7 @@ custom_target('tags.r2',
   command: [py3_exe, '-c', script, '@INPUT@'],
   capture: true,
   build_by_default: true,
-  build_always: false,
+  build_always_stale: false,
   install: true,
   install_dir: r2_flags
 )
