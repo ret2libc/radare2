@@ -26,3 +26,13 @@ executable('radare2', 'radare2.c',
   install: true,
   implicit_include_directories: false
 )
+
+if host_machine.system() != 'windows'
+  link_file = '@0@/bin/r2'.format(r2_prefix)
+  custom_target(
+    output: link_file,
+    build_by_default: true,
+    build_always_stale: true,
+#    command: 'ln -s @0@/bin/radare2 @1@'.format(r2_prefix, link_file)
+  )
+endif
