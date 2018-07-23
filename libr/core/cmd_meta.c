@@ -12,8 +12,8 @@ static const char *help_msg_C[] = {
 	"Usage:", "C[-LCvsdfm*?][*?] [...]", " # Metadata management",
 	"C", "", "list meta info in human friendly form",
 	"C*", "", "list meta info in r2 commands",
-	"C[Chsdmf]", "", "list comments/hidden/strings/data/magic/formatted in human friendly form",
-	"C[Chsdmf]*", "", "list comments/hidden/strings/data/magic/formatted in r2 commands",
+	"C[Cthsdmf]", "", "list comments/types/hidden/strings/data/magic/formatted in human friendly form",
+	"C[Cthsdmf]*", "", "list comments/types/hidden/strings/data/magic/formatted in r2 commands",
 	"C-", " [len] [[@]addr]", "delete metadata at given address range",
 	"CL", "[-][*] [file:line] [addr]", "show or add 'code line' information (bininfo)",
 	"CS", "[-][space]", "manage meta-spaces to filter comments, etc..",
@@ -29,6 +29,7 @@ static const char *help_msg_C[] = {
 	"Cd", "[-] [size] [repeat] [@addr]", "hexdump data array (Cd 4 10 == dword [10])",
 	"Cf", "[?][-] [sz] [0|cnt][fmt] [a0 a1...] [@addr]", "format memory (see pf?)",
 	"CF", "[sz] [fcn-sign..] [@addr]", "function signature",
+	"Ct", "[?] [-] [comment-text] [@addr]", "add/remove type analysis comment",
 	"Cm", "[-] [sz] [fmt..] [@addr]", "magic parse (see pm?)",
 	NULL
 };
@@ -953,6 +954,7 @@ static int cmd_meta(void *data, const char *input) {
 	case 'd': /* "Cd" data */
 	case 'm': /* Cm magic */
 	case 'f': /* Cf formatted */
+	case 't': /* Ct types analysis comments */
 		cmd_meta_hsdmf (core, input);
 		break;
 	case '-':
