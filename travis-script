@@ -51,5 +51,6 @@ git rev-parse HEAD
 VERBOSE=1 make -k all
 
 if [ "${COVERAGE}" == "1" ] ; then
+    cd ../build
     bash <(curl -s https://codecov.io/bash)
 fi
