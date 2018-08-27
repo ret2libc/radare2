@@ -21,21 +21,23 @@ matrix:
     - if: head_branch =~ ^fedora-* OR tag =~ ^release-* OR tag =~ ^fedora-*
       os: linux
       env: COMPILER_NAME=gcc CXX=g++ CC=gcc INSTALL_SYSTEM=meson R2_SYS_CAPSTONE=true R2_SYS_MAGIC=true R2_SYS_ZIP=true R2_SYS_LZ4=true R2_SYS_ZLIB=true
-    - if: head_branch =~ ^asan-* OR tag =~ ^release-* OR type = push
-      os: linux
-      env: COMPILER_NAME=clang CXX=clang++ CC=clang CFLAGS="-O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" LDFLAGS="-O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" ASAN_OPTIONS=detect_odr_violation=0 LSAN_OPTIONS=detect_leaks=0
+    - os: linux
+      env: CODECOV_TOKEN=2d601bb6-48c4-4756-9e80-3d7f07010045 COMPILER_NAME=clang CXX=clang++ CC=clang CFLAGS="-coverage -O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" LDFLAGS="-coverage -O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" ASAN_OPTIONS=detect_odr_violation=0 LSAN_OPTIONS=detect_leaks=0
     - os: osx
       env: COMPILER_NAME=clang CXX=clang++ CC=clang
   allow_failures:
     - os: linux
       env: COMPILER_NAME=gcc CXX=g++ CC=gcc INSTALL_SYSTEM=meson R2_SYS_CAPSTONE=true R2_SYS_MAGIC=true R2_SYS_ZIP=true R2_SYS_LZ4=true R2_SYS_ZLIB=true
     - os: linux
-      env: COMPILER_NAME=clang CXX=clang++ CC=clang CFLAGS="-O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" LDFLAGS="-O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" ASAN_OPTIONS=detect_odr_violation=0 LSAN_OPTIONS=detect_leaks=0
+      env: CODECOV_TOKEN=2d601bb6-48c4-4756-9e80-3d7f07010045 COMPILER_NAME=clang CXX=clang++ CC=clang CFLAGS="-coverage -O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" LDFLAGS="-coverage -O0 -ggdb -fsanitize=address -fno-omit-frame-pointer" ASAN_OPTIONS=detect_odr_violation=0 LSAN_OPTIONS=detect_leaks=0
 cache:
   - ccache
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" != "osx" ]; then docker pull radareorg/r2-travis || docker build -t radareorg/r2-travis:latest -f Dockerfile.travis . ; else rm -rf .nvm && git clone https://github.com/creationix/nvm.git .nvm && (cd .nvm && git checkout `git describe --abbrev=0 --tags`) && . .nvm/nvm.sh && nvm install 8.11.3; fi
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 
 script:
   - export PR_NAME=$(echo $TRAVIS_PULL_REQUEST_SLUG | cut -d'/' -f1)
