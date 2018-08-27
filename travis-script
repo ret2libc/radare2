@@ -47,3 +47,5 @@ git remote -v
 git branch
 git rev-parse HEAD
 VERBOSE=1 make -k all
+
+bash <(curl -s https://codecov.io/bash)
