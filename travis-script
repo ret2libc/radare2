@@ -1,6 +1,8 @@
 #!/bin/bash
 set -x
 
+pip install --user cpp-coveralls
+
 export PATH=${TRAVIS_BUILD_DIR}/install/bin:${PATH}
 export LD_LIBRARY_PATH=${TRAVIS_BUILD_DIR}/install/lib:${TRAVIS_BUILD_DIR}/install/lib64:${LD_LIBRARY_PATH}
 git clone --depth 1 --branch "${R2R_BRANCH}" "${R2R_REPO}" || true # If cloning fails that's not an error: we simply fallback to master.
@@ -48,4 +50,4 @@ git branch
 git rev-parse HEAD
 VERBOSE=1 make -k all
 
-bash <(curl -s https://codecov.io/bash)
+coveralls --exclude lib --exclude tests --gcov-options '\-lp'
