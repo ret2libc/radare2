@@ -52,5 +52,8 @@ VERBOSE=1 make -k all
 
 if [ "${COVERAGE}" == "1" ] ; then
     cd ../build
-    bash <(curl -s https://codecov.io/bash) 2>/dev/null
+    wget -O codecov.sh https://codecov.io/bash
+    chmod +x ./codecov.sh
+    ./codecov.sh -v 2>/tmp/codecov.log
+    cat /tmp/codecov.log
 fi
