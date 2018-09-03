@@ -51,6 +51,7 @@ static const char *help_msg_at[] = {
 	"@", " 0x1024", "temporary seek to this address (sym.main+3)",
 	"@", " [addr]!blocksize", "temporary set a new blocksize",
 	"@..", "addr", "temporary partial address seek (see s..)",
+	"@!", "blocksize", "temporary change the block size (p8@3!3)",
 	"@(", "from to)", "temporary set from and to for commands supporting ranges",
 	"@a:", "arch[:bits]", "temporary set arch and bits",
 	"@b:", "bits", "temporary set asm.bits",
@@ -143,6 +144,15 @@ static const char *help_msg_p[] = {
 	"pwd", "", "display current working directory",
 	"px", "[?][owq] [len]", "hexdump of N bytes (o=octal, w=32bit, q=64bit)",
 	"pz", "[?] [len]", "print zoom view (see pz? for help)",
+	NULL
+};
+
+static const char *help_msg_pxd[] = {
+	"Usage:", "pxd[1248] ([len])", "show decimal byte/short/word/dword dumps",
+	"pxd", "", "show decimal hexdumps",
+	"pxd2", "", "show shorts hexdump",
+	"pxd4", "", "show dword hexdump (int)",
+	"pxd8", "", "show qword hexdump (int)",
 	NULL
 };
 
@@ -1018,6 +1028,14 @@ static void cmd_print_format(RCore *core, const char *_input, const ut8* block, 
 				free (input);
 				return;
 			}
+
+			char *delim = strchr (name, '.');
+			if (delim) {
+				int len = delim - name;
+				if (len > 0) {
+					name[len] = '\0';
+ 				}
+ 			}
 
 			/* Load format from name into fmt to get the size */
 			/* This make sure the whole structure will be printed */
@@ -4258,8 +4276,10 @@ static int cmd_print(void *data, const char *input) {
 				RAnalFunction *f = r_anal_get_fcn_in (core->anal, core->offset,
 					R_ANAL_FCN_TYPE_FCN | R_ANAL_FCN_TYPE_SYM);
 				if (f) {
+					ut32 rs = r_anal_fcn_realsize (f);
+					ut32 fs = r_anal_fcn_size (f);
 					r_core_seek (core, oseek, SEEK_SET);
-					r_core_block_size (core, r_anal_fcn_size (f));
+					r_core_block_size (core, R_MAX (rs, fs));
 					disasm_strings (core, input, f);
 					r_core_block_size (core, oblock);
 					r_core_seek (core, oseek, SEEK_SET);
@@ -4354,6 +4374,8 @@ static int cmd_print(void *data, const char *input) {
 					} else {
 						ut64 at = f->addr;
 						ut64 sz = f->_size > 0 ? f->_size : r_anal_fcn_realsize (f);
+						ut32 rs = r_anal_fcn_realsize (f);
+						sz = R_MAX (sz, rs);
 						ut8 *buf = calloc (sz, 1);
 						(void)r_io_read_at (core->io, at, buf, sz);
 						core->num->value = r_core_print_disasm (core->print, core, at, buf, sz, sz, 0, 1, 0, f);
@@ -5087,7 +5109,9 @@ static int cmd_print(void *data, const char *input) {
 			}
 			break;
 		case 'd': // "pxd"
-			if (l != 0) {
+			if (input[2] == '?') {
+				r_core_cmd_help (core, help_msg_pxd);
+			} else if (l != 0) {
 				switch (input[2]) {
 				case '1':
 					// 1 byte signed words (byte)
@@ -5104,10 +5128,14 @@ static int cmd_print(void *data, const char *input) {
 							core->block, len, -8, 4, 1);
 					break;
 				case '4':
-				default:
+				case ' ':
+				case 0:
 					// 4 byte signed words
 					r_print_hexdump (core->print, core->offset,
 						core->block, len, 10, 4, 1);
+					break;
+				default:
+					r_core_cmd_help (core, help_msg_pxd);
 					break;
 				}
 			}

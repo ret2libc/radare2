@@ -18,7 +18,7 @@
 #define JAYRO_04 0
 
 // 16 KB is the maximum size for a basic block
-#define MAXBBSIZE 16 * 1024
+#define MAXBBSIZE (16 * 1024)
 #define MAX_FLG_NAME_SIZE 64
 
 #define FIX_JMP_FWD 0
@@ -36,9 +36,9 @@
 
 #define VERBOSE_DELAY if (0)
 
-#define FCN_CONTAINER(x) container_of ((RBNode*)x, RAnalFunction, rb)
+#define FCN_CONTAINER(x) container_of ((RBNode*)(x), RAnalFunction, rb)
 #define fcn_tree_foreach_intersect(root, it, data, from, to)										\
-	for (it = _fcn_tree_iter_first (root, from, to); it.cur && (data = FCN_CONTAINER (it.cur), 1); _fcn_tree_iter_next (&(it), from, to))
+	for ((it) = _fcn_tree_iter_first (root, from, to); (it).cur && ((data) = FCN_CONTAINER ((it).cur), 1); _fcn_tree_iter_next (&(it), from, to))
 
 typedef struct fcn_tree_iter_t {
 	int len;
@@ -1627,7 +1627,7 @@ R_API int r_anal_fcn(RAnal *anal, RAnalFunction *fcn, ut64 addr, ut8 *buf, ut64 
 		r_list_foreach (fcn->bbs, iter, bb) {
 			if (endaddr == bb->addr) {
 				endaddr += bb->size;
-			} else if (endaddr < bb->addr && bb->addr - endaddr < anal->opt.bbs_alignment && !(bb->addr & (anal->opt.bbs_alignment - 1))) {
+			} else if (endaddr < bb->addr && bb->addr - endaddr < anal->opt.bbs_alignment) {
 				endaddr = bb->addr + bb->size;
 			} else {
 				break;

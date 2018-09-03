@@ -47,7 +47,7 @@ static void r_core_free_autocomplete(RCore *core) {
 	r_line_free_autocomplete (core->cons->line);
 }
 
-static int on_fcn_new(void *_anal, void* _user, RAnalFunction *fcn) {
+static int on_fcn_new(RAnal *_anal, void* _user, RAnalFunction *fcn) {
 	RCore *core = (RCore*)_user;
 	const char *cmd = r_config_get (core->config, "cmd.fcn.new");
 	if (cmd && *cmd) {
@@ -60,7 +60,7 @@ static int on_fcn_new(void *_anal, void* _user, RAnalFunction *fcn) {
 	return 0;
 }
 
-static int on_fcn_delete (void *_anal, void* _user, RAnalFunction *fcn) {
+static int on_fcn_delete (RAnal *_anal, void* _user, RAnalFunction *fcn) {
 	RCore *core = (RCore*)_user;
 	const char *cmd = r_config_get (core->config, "cmd.fcn.delete");
 	if (cmd && *cmd) {
@@ -73,7 +73,7 @@ static int on_fcn_delete (void *_anal, void* _user, RAnalFunction *fcn) {
 	return 0;
 }
 
-static int on_fcn_rename(void *_anal, void* _user, RAnalFunction *fcn, const char *oname) {
+static int on_fcn_rename(RAnal *_anal, void* _user, RAnalFunction *fcn, const char *oname) {
 	RCore *core = (RCore*)_user;
 	const char *cmd = r_config_get (core->config, "cmd.fcn.rename");
 	if (cmd && *cmd) {
@@ -104,6 +104,15 @@ static void r_core_debug_breakpoint_hit(RCore *core, RBreakpointItem *bpi) {
 	if (may_output) {
 		r_cons_flush ();
 		r_cons_pop ();
+	}
+}
+
+static void r_core_debug_syscall_hit(RCore *core) {
+	const char *cmdhit = r_config_get (core->config, "cmd.onsyscall");
+
+	if (cmdhit && cmdhit[0] != 0) {
+		r_core_cmd0 (core, cmdhit);
+		r_cons_flush();
 	}
 }
 
@@ -256,6 +265,7 @@ static ut64 numget(RCore *core, const char *k) {
 R_API int r_core_bind(RCore *core, RCoreBind *bnd) {
 	bnd->core = core;
 	bnd->bphit = (RCoreDebugBpHit)r_core_debug_breakpoint_hit;
+	bnd->syshit = (RCoreDebugSyscallHit)r_core_debug_syscall_hit;
 	bnd->cmd = (RCoreCmd)r_core_cmd0;
 	bnd->cmdf = (RCoreCmdF)r_core_cmdf;
 	bnd->cmdstr = (RCoreCmdStr)r_core_cmd_str;
@@ -1253,6 +1263,51 @@ static void autocomplete_theme(RLine* line, const char* str) {
 	line->completion.argv = tmp_argv;
 }
 
+static bool find_e_opts(RLine *line) {
+	RCore *core = line->user;
+	if (!core) {
+		return false;
+	}
+	const char *pattern = "e (.*)=";
+	RRegex *rx = r_regex_new (pattern, "e");
+	const size_t nmatch = 2;
+	RRegexMatch pmatch[2];
+	bool ret = false;
+
+	if (r_regex_exec (rx, line->buffer.data, nmatch, pmatch, 1)) {
+		goto out;
+	}
+	int i;
+	char *str = NULL;
+	for (i = pmatch[1].rm_so; i < pmatch[1].rm_eo; i++) {
+		str = r_str_appendch (str, line->buffer.data[i]);
+	}
+	RConfigNode *node = r_config_node_get (core->config, str);
+	if (!node) {
+		return false;
+	}
+	RListIter *iter;
+	char *option;
+	char *p = (char *) r_sub_str_lchr (line->buffer.data, 0, line->buffer.index, '=');
+	p++;
+	i = 0;
+	int n = strlen (p);
+	r_list_foreach (node->options, iter, option) {
+		if (!strncmp (option, p, n)) {
+			tmp_argv[i++] = option;
+		}
+	}
+	tmp_argv[i] = NULL;
+	line->completion.argc = i;
+	line->completion.argv = tmp_argv;
+	line->completion.opt = true;
+	ret = true;
+
+ out:
+	r_regex_free (rx);
+	return ret;
+}
+
 static bool find_autocomplete(RLine *line) {
 	RCore *core = line->user;
 	if (!core) {
@@ -1608,6 +1663,8 @@ static int autocomplete(RLine *line) {
 			} else {
 				autocompleteFilename (line, NULL, 1);
 			}
+		} else if (find_e_opts (line)) {
+			return true;
 		} else if (line->offset_prompt) {
 			autocomplete_flags (line, line->buffer.data);
 		} else if (line->file_prompt) {
@@ -2686,7 +2743,7 @@ reaccept:
 					if (r_core_file_open (core, (const char *)ptr, perm, 0)) {
 						int fd = r_io_fd_get_current (core->io);
 						r_core_bin_load (core, NULL, baddr);
-						r_io_map_add (core->io, fd, perm, 0, 0, r_io_fd_size (core->io, fd), true);
+						r_io_map_add (core->io, fd, perm, 0, 0, r_io_fd_size (core->io, fd));
 						if (core->file) {
 							pipefd = fd;
 						} else {

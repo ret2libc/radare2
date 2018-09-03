@@ -130,7 +130,7 @@ static char nuls[10];		/* place to point scanner in event of error */
 #define	EMIT(op, sopnd)	doemit(p, (sop)(op), (size_t)(sopnd))
 #define	INSERT(op, pos)	doinsert(p, (sop)(op), HERE()-(pos)+1, pos)
 #define	AHEAD(pos)		dofwd(p, pos, HERE()-(pos))
-#define	ASTERN(sop, pos)	EMIT(sop, HERE()-pos)
+#define	ASTERN(sop, pos)	EMIT(sop, HERE()-(pos))
 #define	HERE()		(p->slen)
 #define	THERE()		(p->slen - 1)
 #define	THERETHERE()	(p->slen - 2)
@@ -225,7 +225,7 @@ R_API int r_regex_comp(RRegex *preg, const char *pattern, int cflags) {
 #	define	GOODFLAGS(f)	((f)&~R_REGEX_DUMP)
 #endif
 	cflags = GOODFLAGS (cflags);
-	if ((cflags & R_REGEX_EXTENDED) && (cflags & R_REGEX_NOSPEC)) {
+	if (!preg || ((cflags & R_REGEX_EXTENDED) && (cflags & R_REGEX_NOSPEC))) {
 		return R_REGEX_INVARG;
 	}
 	if (cflags & R_REGEX_PEND) {

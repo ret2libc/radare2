@@ -11,9 +11,9 @@
 #define R_MIDFLAGS_REALIGN 2
 #define R_MIDFLAGS_SYMALIGN 3
 
-#define COLOR(ds, field) (ds->show_color ? ds->field : "")
-#define COLOR_ARG(ds, field) (ds->show_color && ds->show_color_args ? ds->field : "")
-#define COLOR_CONST(ds, color) (ds->show_color ? Color_ ## color : "")
+#define COLOR(ds, field) ((ds)->show_color ? (ds)->field : "")
+#define COLOR_ARG(ds, field) ((ds)->show_color && (ds)->show_color_args ? (ds)->field : "")
+#define COLOR_CONST(ds, color) ((ds)->show_color ? Color_ ## color : "")
 #define COLOR_RESET(ds) COLOR_CONST(ds, RESET)
 
 // ugly globals but meh
@@ -100,6 +100,7 @@ typedef struct {
 	bool show_lines_bb;
 	bool show_lines_ret;
 	bool show_lines_call;
+	bool show_lines_fcn;
 	int linesright;
 	int tracespace;
 	int cyclespace;
@@ -140,7 +141,6 @@ typedef struct {
 	bool show_leahints;
 	bool show_slow;
 	int cmtcol;
-	bool show_lines_fcn;
 	bool show_calls;
 	bool show_cmtflgrefs;
 	bool show_cycles;
@@ -646,7 +646,7 @@ static RDisasmState * ds_init(RCore *core) {
 		emustack_min = addr;
 		emustack_max = addr + size;
 		ds->stackFd = r_io_fd_open (core->io, uri, R_IO_RW, 0);
-		RIOMap *map = r_io_map_add (core->io, ds->stackFd, R_IO_RW, 0LL, addr, size, true);
+		RIOMap *map = r_io_map_add (core->io, ds->stackFd, R_IO_RW, 0LL, addr, size);
 		if (!map) {
 			r_io_fd_close (core->io, ds->stackFd);
 			eprintf ("Cannot create map for tha stack, fd %d got closed again\n", ds->stackFd);
@@ -1566,15 +1566,6 @@ static void ds_show_functions(RDisasmState *ds) {
 		default:
 			fcntype = "loc"; break;
 		}
-#if SLOW_BUT_OK
-		int corner = (f->size <= ds->analop.size) ? RDWN_CORNER : LINE_VERT;
-		corner = LINE_VERT; // 99% of cases
-		RFlagItem *item = r_flag_get_i (core->flags, f->addr);
-		corner = item ? LINE_VERT : RDWN_CORNER;
-		if (item) {
-			corner = 0;
-		}
-#endif
 		//ds_set_pre (ds, core->cons->vline[CORNER_TL]);
 		if (ds->show_lines_fcn) {
 			ds->pre = DS_PRE_FCN_HEAD;
@@ -1979,7 +1970,8 @@ static void ds_show_flags(RDisasmState *ds) {
 			ds_print_offset (ds);
 			r_cons_printf (" ");
 		} else {
-			ds_pre_xrefs (ds, false);
+			bool no_fcn_lines = (f && f->addr == flag->offset);
+			ds_pre_xrefs (ds, no_fcn_lines);
 		}
 
 		if (ds->show_color) {
@@ -3150,22 +3142,27 @@ static void ds_print_fcn_name(RDisasmState *ds) {
 	}
 }
 
-static void ds_print_shortcut(RDisasmState *ds, ut64 addr, int pos) {
+static int ds_print_shortcut(RDisasmState *ds, ut64 addr, int pos) {
 	char *shortcut = r_core_add_asmqjmp (ds->core, addr);
+	int slen = shortcut? strlen (shortcut): 0;
 	if (!pos && !shortcut) {
-		r_cons_printf ("   ");
-		return;
+		r_cons_printf (" ");
+		return 0;
 	}
 	if (pos) {
 		ds_align_comment (ds);
 	}
-	char *ch = pos?  ";": "";
+	const char *ch = pos? ";": "";
 	if (ds->show_color) {
 		r_cons_strcat (ds->pal_comment);
+	}
+	if (*ch) {
+		slen++;
 	}
 	if (shortcut) {
 		if (ds->core->is_asmqjmps_letter) {
 			r_cons_printf ("%s[g%s]", ch, shortcut);
+			slen++;
 		} else {
 			r_cons_printf ("%s[%s]", ch, shortcut);
 		}
@@ -3180,6 +3177,8 @@ static void ds_print_shortcut(RDisasmState *ds, ut64 addr, int pos) {
 			r_cons_strcat (Color_RESET_NOBG);
 		}
 	}
+	slen++;
+	return slen;
 }
 
 static bool ds_print_core_vmode_jump_hit(RDisasmState *ds, int pos) {
@@ -3213,6 +3212,7 @@ static void getPtr(RDisasmState *ds, ut64 addr, int pos) {
 static void ds_print_core_vmode(RDisasmState *ds, int pos) {
 	RCore *core = ds->core;
 	bool gotShortcut = false;
+	int i, slen = 0;
 
 	if (!core->vmode) {
 		return;
@@ -3232,7 +3232,7 @@ static void ds_print_core_vmode(RDisasmState *ds, int pos) {
 	case R_ANAL_OP_TYPE_LOAD:
 		if (ds->show_leahints) {
 			if (ds->analop.ptr != UT64_MAX && ds->analop.ptr > 256) {
-				ds_print_shortcut (ds, ds->analop.ptr, pos);
+				slen = ds_print_shortcut (ds, ds->analop.ptr, pos);
 				gotShortcut = true;
 			}
 		}
@@ -3255,9 +3255,9 @@ static void ds_print_core_vmode(RDisasmState *ds, int pos) {
 #endif
 		if (ds->show_jmphints) {
 			if (ds->analop.jump != UT64_MAX) {
-				ds_print_shortcut (ds, ds->analop.jump, pos);
+				slen = ds_print_shortcut (ds, ds->analop.jump, pos);
 			} else {
-				ds_print_shortcut (ds, ds->analop.ptr, pos);
+				slen = ds_print_shortcut (ds, ds->analop.ptr, pos);
 			}
 			gotShortcut = true;
 		}
@@ -3269,7 +3269,7 @@ static void ds_print_core_vmode(RDisasmState *ds, int pos) {
 	case R_ANAL_OP_TYPE_CALL:
 	case R_ANAL_OP_TYPE_COND | R_ANAL_OP_TYPE_CALL:
 		if (ds->show_jmphints) {
-			ds_print_shortcut (ds, ds->analop.jump, pos);
+			slen = ds_print_shortcut (ds, ds->analop.jump, pos);
 			gotShortcut = true;
 		}
 		break;
@@ -3280,8 +3280,15 @@ static void ds_print_core_vmode(RDisasmState *ds, int pos) {
 		break;
 	}
 	if (!gotShortcut) {
-		r_cons_strcat ("   ");
+		for (i = 4 - slen; i > 0; i--) {
+			r_cons_strcat (" ");
+		}
+	} else {
+		for (i = 3 - slen; i > 0; i--) {
+			r_cons_strcat (" ");
+		}
 	}
+	r_cons_strcat ("  ");
 }
 
 // align for comment
@@ -4331,36 +4338,35 @@ static void ds_print_calls_hints(RDisasmState *ds) {
 	} else if (!(name = r_type_func_guess (TDB, fcn->name))) {
 		return;
 	}
-	if (ds->show_color) {
-		r_cons_strcat (ds->pal_comment);
-	}
-	ds_align_comment (ds);
+	ds_begin_comment (ds);
 	const char *fcn_type = r_type_func_ret (TDB, name);
-	if (fcn_type && *fcn_type) {
-		r_cons_printf (
-			"; %s%s%s(", fcn_type,
-			fcn_type[strlen (fcn_type) - 1] == '*' ? "" : " ",
-			name);
+	if (!fcn_type || !*fcn_type) {
+		return;
 	}
+	char *cmt = r_str_newf ("; %s%s%s(", fcn_type,
+		fcn_type[strlen (fcn_type) - 1] == '*' ? "" : " ",
+		name);
 	int i, arg_max = r_type_func_args_count (TDB, name);
 	if (!arg_max) {
-		r_cons_printf ("void)");
+		cmt = r_str_append (cmt, "void)");
 	} else {
 		for (i = 0; i < arg_max; i++) {
 			char *type = r_type_func_args_type (TDB, name, i);
 			char *tname = r_type_func_args_name (TDB, name, i);
 			if (type && *type) {
-				r_cons_printf ("%s%s%s%s%s", i == 0 ? "": " ", type,
+				cmt = r_str_appendf (cmt, "%s%s%s%s%s", i == 0 ? "": " ", type,
 						type[strlen (type) -1] == '*' ? "": " ",
 						tname, i == arg_max - 1 ? ")": ",");
 			} else if (tname && !strcmp (tname, "...")) {
-				r_cons_printf ("%s%s%s", i == 0 ? "": " ",
+				cmt = r_str_appendf (cmt, "%s%s%s", i == 0 ? "": " ",
 						tname, i == arg_max - 1 ? ")": ",");
 			}
 			free (type);
 		}
 	}
+	ds_comment (ds, true, cmt);
 	ds_print_color_reset (ds);
+	free (cmt);
 	free (name);
 }
 
@@ -4806,6 +4812,9 @@ toro:
 			ds_print_color_reset (ds);
 			if (ds->show_emu) {
 				ds_print_esil_anal (ds);
+			}
+			if (ds->analop.type == R_ANAL_OP_TYPE_CALL && ds->show_calls) {
+				ds_print_calls_hints (ds);
 			}
 		}
 

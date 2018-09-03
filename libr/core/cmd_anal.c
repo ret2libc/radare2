@@ -1074,6 +1074,9 @@ static int var_cmd(RCore *core, const char *str) {
 	case '*':
 	case 'j':
 		r_anal_var_list_show (core->anal, fcn, type, str[1]);
+		if (str[1] == 'j') {
+			r_cons_print ("\n");
+		}
 		break;
 	case '.':
 		r_anal_var_list_show (core->anal, fcn, core->offset, 0);
@@ -3798,7 +3801,7 @@ static void cmd_esil_mem(RCore *core, const char *input) {
 	snprintf (uri, sizeof (uri), "malloc://%d", (int)size);
 	esil->stack_fd = r_io_fd_open (core->io, uri, R_IO_RW, 0);
 	if (!(stack_map = r_io_map_add (core->io, esil->stack_fd,
-			R_IO_RW, 0LL, addr, size, true))) {
+			R_IO_RW, 0LL, addr, size))) {
 		r_io_fd_close (core->io, esil->stack_fd);
 		eprintf ("Cannot create map for tha stack, fd %d got closed again\n", esil->stack_fd);
 		esil->stack_fd = 0;

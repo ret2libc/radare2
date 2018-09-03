@@ -2369,12 +2369,12 @@ R_API int r_core_config_init(RCore *core) {
 #else
 	SETPREF ("dbg.glibc.tcache", "false", "Set glib tcache parsing");
 #endif
-#if R_SYS_BITS == R_SYS_BITS_64
+#if __x86_64__
 	SETI ("dbg.glibc.ma_offset", 0x000000, "Main_arena offset from his symbol");
 	SETI ("dbg.glibc.fc_offset", 0x00250, "First chunk offset from brk_start");
 #else
 	SETI ("dbg.glibc.ma_offset", 0x1bb000, "Main_arena offset from his symbol");
-	SETI ("dbg.glibc.fc_offset", 0x18, "First chunk offset from brk_start");
+	SETI ("dbg.glibc.fc_offset", 0x158, "First chunk offset from brk_start");
 #endif
 
 	SETPREF ("esil.prestep", "true", "Step before esil evaluation in `de` commands");
@@ -2693,6 +2693,7 @@ R_API int r_core_config_init(RCore *core) {
 	SETPREF ("cmd.xterm", "xterm -bg black -fg gray -e", "xterm command to spawn with V@");
 	SETICB ("cmd.depth", 10, &cb_cmddepth, "Maximum command depth");
 	SETPREF ("cmd.bp", "", "Run when a breakpoint is hit");
+	SETPREF ("cmd.onsyscall", "", "Run when a syscall is hit");
 	SETICB ("cmd.hitinfo", 1, &cb_debug_hitinfo, "Show info when a tracepoint/breakpoint is hit");
 	SETPREF ("cmd.times", "", "Run when a command is repeated (number prefix)");
 	SETPREF ("cmd.stack", "", "Command to display the stack in visual debug mode");

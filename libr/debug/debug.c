@@ -17,6 +17,9 @@ R_API RDebugInfo *r_debug_info(RDebug *dbg, const char *arg) {
 	if (!dbg || !dbg->h || !dbg->h->info) {
 		return NULL;
 	}
+	if (dbg->pid < 0) {
+		return NULL;
+	}
 	return dbg->h->info (dbg, arg);
 }
 
@@ -1489,6 +1492,11 @@ R_API int r_debug_continue_syscalls(RDebug *dbg, int *sc, int n_sc) {
 			return -1;
 		}
 		reg = show_syscall (dbg, "SN");
+
+		if (dbg->corebind.core && dbg->corebind.syshit) {
+			dbg->corebind.syshit (dbg->corebind.core);
+		}
+
 		if (n_sc == -1) {
 			continue;
 		}
@@ -1613,10 +1621,13 @@ R_API ut64 r_debug_get_baddr(RDebug *dbg, const char *file) {
 	}
 	if (!strcmp (dbg->iob.io->desc->plugin->name, "gdb")) {		//this is very bad
 		// Tell gdb that we want baddr, not full mem map
-		dbg->iob.system(dbg->iob.io, "baddr");
+		dbg->iob.system (dbg->iob.io, "baddr");
 	}
 	int pid = r_io_desc_get_pid (dbg->iob.io->desc);
 	int tid = r_io_desc_get_tid (dbg->iob.io->desc);
+	if (pid < 0 || tid < 0) {
+		return 0LL;
+	}
 	if (r_debug_attach (dbg, pid) == -1) {
 		return 0LL;
 	}

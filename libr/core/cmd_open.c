@@ -33,7 +33,7 @@ static const char *help_msg_o[] = {
 	"oo","+","reopen current file in read-write",
 	"ood","[r] [args]","reopen in debugger mode (with args)",
 	"oo[bnm]"," [...]","see oo? for help",
-	"op"," [fd]", "prioritize given fd (see also ob)",
+	"op"," [fd]", "select the given fd as current file (see also ob)",
 	"ox", " fd fdx", "exchange the descs of fd and fdx and keep the mapping",
 	NULL
 };
@@ -676,7 +676,7 @@ static void cmd_open_map(RCore *core, const char *input) {
 				if (!size) {
 					size = r_io_fd_size (core->io, fd);
 				}
-				map = r_io_map_add (core->io, fd, rwx_arg ? rwx : desc->flags, paddr, vaddr, size, true);
+				map = r_io_map_add (core->io, fd, rwx_arg ? rwx : desc->flags, paddr, vaddr, size);
 				r_io_map_set_name (map, name);
 			}
 		} else {
@@ -755,7 +755,7 @@ static void cmd_open_map(RCore *core, const char *input) {
 			RIODesc *desc = r_io_desc_get (core->io, fd);
 			if (desc) {
 				ut64 size = r_io_desc_size (desc);
-				map = r_io_map_add (core->io, fd, desc->flags, 0, 0, size, true);
+				map = r_io_map_add (core->io, fd, desc->flags, 0, 0, size);
 				r_io_map_set_name (map, desc->name);
 			} else {
 				eprintf ("Usage: omm [fd]\n");
@@ -1114,7 +1114,7 @@ static int cmd_open(void *data, const char *input) {
 		if ((file = r_core_file_open (core, ptr, perms, addr))) {
 			fd = file->fd;
 			r_io_map_add (core->io, fd, perms, 0LL, addr,
-					r_io_fd_size (core->io, fd), true);
+					r_io_fd_size (core->io, fd));
 		}
 		r_str_argv_free (argv);
 		if (!silence) {

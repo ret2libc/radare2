@@ -619,8 +619,8 @@ int main(int argc, char **argv) {
 		free (tmp);
 	}
 
-#define is_active(x) (action & x)
-#define set_action(x) { actions++; action |= x; }
+#define is_active(x) (action & (x))
+#define set_action(x) { actions++; action |= (x); }
 #define unset_action(x) action &= ~x
 	while ((c = getopt (argc, argv, "DjgAf:F:a:B:G:b:cC:k:K:dD:Mm:n:N:@:isSVIHeEUlRwO:o:pPqQrvLhuxXzZ")) != -1) {
 		switch (c) {
@@ -786,9 +786,11 @@ int main(int argc, char **argv) {
 			}
 			break;
 		case 'h':
-			  r_core_fini (&core);
-			  return rabin_show_help (1);
-		default: action |= R_BIN_REQ_HELP;
+			r_core_fini (&core);
+			return rabin_show_help (1);
+		default:
+			action |= R_BIN_REQ_HELP;
+			break;
 		}
 	}
 
@@ -1037,7 +1039,7 @@ int main(int argc, char **argv) {
 	}
 #define isradjson (rad==R_CORE_BIN_JSON&&actions>0)
 #define run_action(n,x,y) {\
-	if (action&x) {\
+	if (action&(x)) {\
 		if (isradjson) r_cons_printf ("%s\"%s\":",actions_done?",":"",n);\
 		if (!r_core_bin_info (&core, y, rad, va, &filter, chksum)) {\
 			if (isradjson) r_cons_print ("false");\

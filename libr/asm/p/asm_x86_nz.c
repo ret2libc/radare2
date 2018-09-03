@@ -308,7 +308,15 @@ static int process_group_2(RAsm *a, ut8 *data, const Opcode *op) {
 			data[l++] = 0xc1;
 		}
 	} else if (op->operands[0].type & OT_BYTE) {
-		if (op->operands[1].type & (OT_GPREG | OT_WORD)) {
+		Operand *o = &op->operands[0];
+		if (o->regs[0] != -1 && o->regs[1] != -1) {
+			data[l++] = 0xc0;
+			data[l++] = 0x44;
+			data[l++] = o->regs[0]| (o->regs[1]<<3);
+			data[l++] = (ut8)((o->offset*o->offset_sign) & 0xff);
+			data[l++] = immediate;
+			return l;
+		} else if (op->operands[1].type & (OT_GPREG | OT_WORD)) {
 			data[l++] = 0xd2;
 		} else if (immediate == 1) {
 			data[l++] = 0xd0;
@@ -870,34 +878,32 @@ static int opdec(RAsm *a, ut8 *data, const Opcode *op) {
 		eprintf ("Error: Invalid operands\n");
 		return -1;
 	}
-	if (op->operands[0].type & OT_MEMORY) {
-		if (!op->operands[0].explicit_size) {
-			return -1;
-		}
+	int size = op->operands[0].type & ALL_SIZE;
+	if (op->operands[0].explicit_size) {
+		size = op->operands[0].dest_size;
 	}
-	if (op->operands[0].type & OT_BYTE) {
-		data[l++] = 0xfe;
-		if (op->operands[0].type & OT_MEMORY) {
-			data[l++] = 0x1 << 3 | op->operands[0].regs[0];
-		} else {
-			data[l++] = 0x19 << 3 | op->operands[0].reg;
-		}
-	} else {
-		if (op->operands[0].type & OT_WORD) {
-			data[l++] = 0x48 | op->operands[0].reg;
-		} else if (op->operands[0].type & OT_MEMORY) {
+	if (size & OT_QWORD) {
+		data[l++] = 0x48;
+		data[l++] = 0xff;
+	} else if (size & OT_DWORD) {
+		if (a->bits > 32 || op->operands[0].type & OT_MEMORY) {
 			data[l++] = 0xff;
-			data[l++] = 0x1 << 3 | op->operands[0].regs[0];
-		} else {
-			if (a->bits == 32) {
-				data[l++] = 0x48 | op->operands[0].reg;
-			} else if (a->bits == 64) {
-				data[l++] = 0x48;
-				data[l++] = 0xff;
-				data[l++] = 0xc8 | op->operands[0].reg;
-			}
 		}
+	} else if (size & OT_WORD) {
+		data[l++] = 0x66;
+		data[l++] = 0xff;
+	} else if (size & OT_BYTE) {
+		data[l++] = 0xfe;
 	}
+
+	if (op->operands[0].type & OT_MEMORY) {
+		data[l++] = 0x08 | op->operands[0].regs[0];
+	} else if (a->bits == 32 && size & OT_DWORD) {
+		data[l++] = 0x48 | op->operands[0].reg;
+	} else {
+		data[l++] = 0xc8 | op->operands[0].reg;
+	}
+
 	return l;
 }
 
@@ -1167,35 +1173,37 @@ static int opclflush(RAsm *a, ut8 *data, const Opcode *op) {
 }
 
 static int opinc(RAsm *a, ut8 *data, const Opcode *op) {
+	if (op->operands[1].type) {
+		eprintf ("Error: Invalid operands\n");
+		return -1;
+	}
 	int l = 0;
+	int size = op->operands[0].type & ALL_SIZE;
+	if (op->operands[0].explicit_size) {
+		size = op->operands[0].dest_size;
+	}
+	if (size & OT_QWORD) {
+		data[l++] = 0x48;
+		data[l++] = 0xff;
+	} else if (size & OT_DWORD) {
+		if (a->bits > 32 || op->operands[0].type & OT_MEMORY) {
+			data[l++] = 0xff;
+		}
+	} else if (size & OT_WORD) {
+		data[l++] = 0x66;
+		data[l++] = 0xff;
+	} else if (size & OT_BYTE) {
+		data[l++] = 0xfe;
+	}
+
 	if (op->operands[0].type & OT_MEMORY) {
-		if (!op->operands[0].explicit_size) {
-			return -1;
-		}
-	}
-	if (a->bits == 64) {
-		if (op->operands[0].type & OT_GPREG) {
-			data[l++] = 0x48;
-			data[l++] = 0xff;
-			data[l++] = 0xc0 | op->operands[0].reg;
-		}
-		return l;
-	}
-	if (op->operands[0].type & OT_REGALL) {
-		if (op->operands[0].type & OT_BYTE) {
-			data[l++] = 0xfe;
-			data[l++] = 0xc0 | op->operands[0].reg;
-		} else {
-			data[l++] = 0x40 | op->operands[0].reg;
-		}
-	} else {
-		if (op->operands[0].type & OT_BYTE) {
-			data[l++] = 0xfe;
-		} else {
-			data[l++] = 0xff;
-		}
 		data[l++] = op->operands[0].regs[0];
+	} else if (a->bits == 32 && size & OT_DWORD) {
+		data[l++] = 0x40 | op->operands[0].reg;
+	} else {
+		data[l++] = 0xc0 | op->operands[0].reg;
 	}
+
 	return l;
 }
 

@@ -25,15 +25,15 @@
 
 #define bprintf if(bin->verbose)eprintf
 
-#define READ8(x, i) r_read_ble8(x + i); i += 1;
-#define READ16(x, i) r_read_ble16(x + i, bin->endian); i += 2;
-#define READ32(x, i) r_read_ble32(x + i, bin->endian); i += 4;
-#define READ64(x, i) r_read_ble64(x + i, bin->endian); i += 8;
+#define READ8(x, i) r_read_ble8((x) + (i)); (i) += 1;
+#define READ16(x, i) r_read_ble16((x) + (i), bin->endian); (i) += 2;
+#define READ32(x, i) r_read_ble32((x) + (i), bin->endian); (i) += 4;
+#define READ64(x, i) r_read_ble64((x) + (i), bin->endian); (i) += 8;
 
-#define BREAD8(x, i) r_read_ble8(r_buf_get_at (x, (i), NULL)); i += 1;
-#define BREAD16(x, i) r_read_ble16(r_buf_get_at (x, (i), NULL), bin->endian); i += 2;
-#define BREAD32(x, i) r_read_ble32(r_buf_get_at (x, (i), NULL), bin->endian); i += 8;
-#define BREAD64(x, i) r_read_ble64(r_buf_get_at (x, (i), NULL), bin->endian); i += 8;
+#define BREAD8(x, i) r_read_ble8(r_buf_get_at (x, (i), NULL)); (i) += 1;
+#define BREAD16(x, i) r_read_ble16(r_buf_get_at (x, (i), NULL), bin->endian); (i) += 2;
+#define BREAD32(x, i) r_read_ble32(r_buf_get_at (x, (i), NULL), bin->endian); (i) += 8;
+#define BREAD64(x, i) r_read_ble64(r_buf_get_at (x, (i), NULL), bin->endian); (i) += 8;
 
 #define GROWTH_FACTOR (1.5)
 
@@ -896,7 +896,8 @@ static Sdb *store_versioninfo_gnu_verneed(ELFOBJ *bin, Elf_(Shdr) *shdr, int sz)
 	Sdb *sdb_vernaux = NULL;
 	Sdb *sdb_version = NULL;
 	Sdb *sdb = NULL;
-	int i, cnt;
+	ut64 i;
+	int cnt;
 
 	if (!bin || !bin->dynstr) {
 		return NULL;
@@ -2609,7 +2610,7 @@ RBinElfSection* Elf_(r_bin_elf_get_sections)(ELFOBJ *bin) {
 		}
 		nidx = bin->shdr[i].sh_name;
 #define SHNAME (int)bin->shdr[i].sh_name
-#define SHNLEN ELF_STRING_LENGTH - 4
+#define SHNLEN (ELF_STRING_LENGTH - 4)
 #define SHSIZE (int)bin->shstrtab_size
 		if (nidx < 0 || !bin->shstrtab_section || !bin->shstrtab_size || nidx > bin->shstrtab_size) {
 			snprintf (invalid_s, sizeof (invalid_s) - 4, "invalid%d", invalid_c);
