@@ -63,6 +63,7 @@ License:        LGPLv3+ and GPLv2+ and BSD and MIT and ASLv2.0 and MPLv2.0 and z
 BuildRequires:  sed
 %endif
 
+BuildRequires:  gcc
 BuildRequires:  meson
 BuildRequires:  ninja-build
 BuildRequires:  pkgconfig
