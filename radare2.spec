@@ -24,7 +24,7 @@ Release:        0.%{rel}.%{gitdate}git%{shortcommit}%{?dist}
 Source0:        https://github.com/%{gituser}/%{gitname}/archive/%{commit}/%{name}-%{version}-%{shortcommit}.tar.gz
 %endif
 
-License:        LGPLv3+ and GPLv2+ and BSD and MIT and ASLv2.0 and MPLv2.0 and zlib
+License:        LGPLv3+ and GPLv2+ and BSD and MIT and ASL 2.0 and MPLv2.0 and zlib
 # Radare2 as a package is targeting to be licensed/compiled as LGPLv3+
 # during build for Fedora the GPL code is not omitted so effectively it is GPLv2+
 # some code has originally different license:
