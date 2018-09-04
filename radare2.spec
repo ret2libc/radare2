@@ -227,7 +227,7 @@ ln -s radare2 %{buildroot}/%{_bindir}/r2
 %doc %{_datadir}/%{name}/%{version}/www/README.Fedora
 %license COPYING COPYING.LESSER
 %{_bindir}/r*
-%{_libdir}/libr*.so.*
+%{_libdir}/libr_*.so.2.9.*
 %{_mandir}/man1/r*.1.*
 %{_mandir}/man7/esil.7.*
 %dir %{_datadir}/%{name}
