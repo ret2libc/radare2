@@ -207,8 +207,7 @@ rm %{buildroot}/%{_bindir}/r2pm
 # create r2 symlink because meson build does not create it (yet)
 ln -s radare2 %{buildroot}/%{_bindir}/r2
 
-%post -p /sbin/ldconfig
-%postun -p /sbin/ldconfig
+%ldconfig_scriptlets
 
 
 %check
