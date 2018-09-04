@@ -258,6 +258,9 @@ ln -s radare2 %{buildroot}/%{_bindir}/r2
 * Tue Sep 4 2018 Riccardo Schirone <rschirone91@gmail.com> 2.9.0-1
 - use system xxhash and openssl
 - bump to 2.9.0 release
+- use bcond_without to choose between release build or git one
+- add gcc as BuildRequires
+- do not directly call ldconfig but use RPM macros
 
 * Fri Aug 3 2018 Riccardo Schirone <rschirone91@gmail.com> 2.8.0-0.2.20180718git51e2936
 - add grub2 and xxhash Provides
