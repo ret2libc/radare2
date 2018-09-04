@@ -1,3 +1,6 @@
+# by default it builds from the released version of radare2
+%bcond_without  build_release
+
 Name:           radare2
 Summary:        The reverse engineering framework
 Version:        2.9.0
@@ -7,17 +10,13 @@ VCS:            https://github.com/radare/radare2
 %global         gituser         radare
 %global         gitname         radare2
 
-%global         gitdate         20180718
-%global         commit          51e293663bb9d887987ddfeaf7bd29a11c20e3e1
+%global         gitdate         20180904
+%global         commit          00144a348c47802f203e5de9add609ea1b0808e4
 %global         shortcommit     %(c=%{commit}; echo ${c:0:7})
 
-# build from released "version" when build_release=1,
-# from git commit "commit" when build_relase=0
-%global         build_release    1
 %global         rel              1
 
-
-%if 0%{?build_release} > 0
+%if %{with build_release}
 Release:        %{rel}%{?dist}
 Source0:        https://github.com/%{gituser}/%{gitname}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 %else
@@ -59,7 +58,7 @@ License:        LGPLv3+ and GPLv2+ and BSD and MIT and ASLv2.0 and MPLv2.0 and z
 # shlr/www/p/vendors/dagre*|graphlib* - 3 clause BSD
 # shlr/www/p/vendors/jquery.onoff.min.js - MIT
 
-%if 0%{?build_release} == 0
+%if %{!with build_release}
 BuildRequires:  sed
 %endif
 
@@ -166,7 +165,7 @@ information
 
 
 %prep
-%if 0%{?build_release} > 0
+%if %{with build_release}
 # Build from git release version
 %setup -q -n %{gitname}-%{version}
 %else
