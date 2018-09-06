@@ -19,6 +19,8 @@ VCS:            https://github.com/radare/radare2
 %if %{with build_release}
 Release:        %{rel}%{?dist}
 Source0:        https://github.com/%{gituser}/%{gitname}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
+
+Patch1:         radare2-disable-debugger-s390x.patch
 %else
 Release:        0.%{rel}.%{gitdate}git%{shortcommit}%{?dist}
 Source0:        https://github.com/%{gituser}/%{gitname}/archive/%{commit}/%{name}-%{version}-%{shortcommit}.tar.gz
@@ -167,7 +169,7 @@ information
 %prep
 %if %{with build_release}
 # Build from git release version
-%setup -q -n %{gitname}-%{version}
+%autosetup -n %{gitname}-%{version}
 %else
 # Build from git commit
 %setup -q -n %{gitname}-%{commit}
@@ -261,6 +263,7 @@ ln -s radare2 %{buildroot}/%{_bindir}/r2
 - use bcond_without to choose between release build or git one
 - add gcc as BuildRequires
 - do not directly call ldconfig but use RPM macros
+- add patch to compile on s390x architecture (disable debugger because there is no support)
 
 * Fri Aug 3 2018 Riccardo Schirone <rschirone91@gmail.com> 2.8.0-0.2.20180718git51e2936
 - add grub2 and xxhash Provides
