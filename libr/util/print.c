@@ -719,11 +719,13 @@ R_API void r_print_set_screenbounds(RPrint *p, ut64 addr) {
 		return;
 	}
 
-	(void) p->consbind.get_size (&r);
-	(void) p->consbind.get_cursor (&rc);
+	if (p->screen_bounds == 1) {
+		(void) p->consbind.get_size (&r);
+		(void) p->consbind.get_cursor (&rc);
 
-	if (rc > r - 1 && p->screen_bounds == 1) {
-		p->screen_bounds = addr;
+		if (rc > r - 1) {
+			p->screen_bounds = addr;
+		}
 	}
 }
 
