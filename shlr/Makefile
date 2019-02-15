@@ -49,7 +49,8 @@ endif
 ifeq (1,$(USE_PTRACE_WRAP))
 MODS+=ptrace-wrap
 endif
-SDB_URL=git://github.com/radare/sdb
+SDB_URL=git://github.com/ret2libc/sdb
+SDB_BRANCH=edge-case
 #SDB_URL=/Users/pancake/prg/sdb
 SPP_URL=git://github.com/radare/spp
 PTRACE_WRAP_URL=git://github.com/thestr4ng3r/ptrace-wrap
@@ -157,7 +158,7 @@ sdb-clean clean-sdb:
 
 sdb-sync sync-sdb:
 	rm -rf sdb sdb.vc
-	git clone --depth 1 ${SDB_URL} sdb.vc
+	git clone --branch ${SDB_BRANCH} --depth 1 ${SDB_URL} sdb.vc
 	mkdir -p sdb
 	cp -rf ${SDB_SYNCFILES} sdb
 	rm -rf sdb.vc $I/sdb
