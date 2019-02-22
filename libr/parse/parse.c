@@ -227,15 +227,6 @@ static int filter(RParse *p, ut64 addr, RFlag *f, char *data, char *str, int len
 	char *nptr;
 	int count = 0;
 	for (count = 0; (nptr = findNextNumber (ptr)) ; count++) {
-#if 0
-		char *optr = ptr;
-		if (nptr[1]== ' ') {
-			for (nptr++;*nptr && *nptr >='0' && *nptr <= '9'; nptr++) {
-			}
-			ptr = nptr;
-			continue;
-		}
-#endif
 		ptr = nptr;
 		if (x86) {
 			for (ptr2 = ptr; *ptr2 && !isx86separator (*ptr2); ptr2++) {
@@ -262,13 +253,11 @@ static int filter(RParse *p, ut64 addr, RFlag *f, char *data, char *str, int len
 			}
 			if (f) {
 				RFlagItem *flag2;
-				flag = r_flag_get_by_spaces (f, off, "symbols", "imports",
-						"relocs", "strings", NULL);
+				flag = p->flg_get_by_spaces (f, off);
 				computed = false;
 				if ((!flag || arm) && p->relsub_addr) {
 					computed = true;
-					flag2 = r_flag_get_by_spaces (f, p->relsub_addr, "symbols",
-							"imports", "relocs", "strings", NULL);
+					flag2 = p->flg_get_by_spaces (f, p->relsub_addr);
 					if (!flag || arm) {
 						flag = flag2;
 					}

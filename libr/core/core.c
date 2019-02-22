@@ -2306,6 +2306,12 @@ static RFlagItem *core_flg_fcn_set (RFlag *f, const char *name, ut64 addr, ut32 
 	return res;
 }
 
+R_API RFlagItem *r_core_flag_get_by_spaces(RFlag *f, ut64 off) {
+	return r_flag_get_by_spaces (f, off, R_FLAGS_FS_FUNCTIONS, R_FLAGS_FS_SYMBOLS,
+		R_FLAGS_FS_IMPORTS, R_FLAGS_FS_RELOCS, R_FLAGS_FS_CLASSES,
+		R_FLAGS_FS_STRINGS, R_FLAGS_FS_SECTIONS, R_FLAGS_FS_SEGMENTS, NULL);
+}
+
 R_API bool r_core_init(RCore *core) {
 	core->blocksize = R_CORE_BLOCKSIZE;
 	core->block = (ut8 *)calloc (R_CORE_BLOCKSIZE + 1, 1);
@@ -2467,7 +2473,9 @@ R_API bool r_core_init(RCore *core) {
 	core->anal->flg_class_set = core_flg_class_set;
 	core->anal->flg_class_get = core_flg_class_get;
 	core->anal->flg_fcn_set = core_flg_fcn_set;
+	core->anal->flg_get_by_spaces = r_core_flag_get_by_spaces;
 	r_anal_bind (core->anal, &(core->parser->analb));
+	core->parser->flg_get_by_spaces = r_core_flag_get_by_spaces;
 
 	r_core_bind (core, &(core->anal->coreb));
 

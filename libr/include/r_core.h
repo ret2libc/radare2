@@ -344,6 +344,7 @@ R_API int r_core_prompt(RCore *core, int sync);
 R_API int r_core_prompt_exec(RCore *core);
 R_API int r_core_lines_initcache (RCore *core, ut64 start_addr, ut64 end_addr);
 R_API int r_core_lines_currline (RCore *core);
+R_API RFlagItem *r_core_flag_get_by_spaces(RFlag *f, ut64 off);
 R_API void r_core_prompt_loop(RCore *core);
 R_API ut64 r_core_pava(RCore *core, ut64 addr);
 R_API void run_pending_anal(RCore *core);
