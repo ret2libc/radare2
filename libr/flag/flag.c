@@ -499,7 +499,47 @@ R_API RFlagItem *r_flag_get(RFlag *f, const char *name) {
 R_API RFlagItem *r_flag_get_i(RFlag *f, ut64 off) {
 	r_return_val_if_fail (f, NULL);
 	const RList *list = r_flag_get_list (f, off);
-	return list ? evalFlag (f, r_list_get_top (list)) : NULL;
+	return list? evalFlag (f, r_list_get_top (list)): NULL;
+}
+
+/* return the first flag that matches an offset ordered by the order of
+ * operands to the function.
+ * Pass in the name of each space, in order, followed by a NULL */
+R_API RFlagItem *r_flag_get_by_spaces(RFlag *f, ut64 off, ...) {
+	r_return_val_if_fail (f, NULL);
+
+	const RList *list = r_flag_get_list (f, off);
+	RFlagItem *ret = NULL;
+	const char *spacename;
+	va_list ap;
+
+	va_start (ap, off);
+	if (r_list_empty (list)) {
+		goto beach;
+	}
+
+	/* if we won't find anything in a preferred spaces, just grab it from
+	 * any of the flag spaces. */
+	ret = r_list_get_top (list);
+	spacename = va_arg (ap, const char *);
+	while (spacename) {
+		RSpace *myspace = r_flag_space_get (f, spacename);
+		if (myspace) {
+			RListIter *iter;
+			RFlagItem *flg;
+
+			r_list_foreach (list, iter, flg) {
+				if (flg->space == myspace) {
+					ret = flg;
+					goto beach;
+				}
+			}
+		}
+		spacename = va_arg (ap, const char *);
+	}
+beach:
+	va_end (ap);
+	return ret? evalFlag (f, ret): NULL;
 }
 
 /* return the first flag item at offset "off" that doesn't start with "loc.",
