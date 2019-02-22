@@ -7,13 +7,21 @@ _INCLUDE_MK_GCC_=
 include ../mk/${COMPILER}.mk
 
 # Build against last capstone release or next
+ifeq ($(shell test -d ../.git && echo 1),1)
 CS_RELEASE=0
+else
+CS_RELEASE=1
+endif
 
 CAPSTONE_CFLAGS?=-g
 # CAPSTONE_MAKEFLAGS?=CAPSTONE_ARCHS="arm aarch64"
 
 GIT?=git
-WGET?=wget
+ifeq ($(shell type wget && echo 1),1)
+WGET?=wget -c --no-check-certificate -O
+else
+WGET?=curl -o
+endif
 
 ifeq ($(CS_RELEASE),1)
 CS_VER=4.0.1
@@ -27,7 +35,7 @@ CS_UPD=20190213
 # NOTE: when you update CS_TIP or CS_BRA, also update them in shlr/meson.build
 #CS_BRA=next
 #CS_TIP=38607453f3de85733f9604dffc27778db3b53766
-CS_TIP=09fc20d626d91c762b4c7a13383330e0f49b94a8
+CS_TIP=0b37390f49499527fd9aca64afddeb5dfbe5e663
 CS_BRA=master
 # REVERT THIS COMMIT BECAUSE ITS WRONG
 CS_REV=
@@ -257,7 +265,7 @@ endif
 	cp -rf capstone/include/*.h capstone/include/capstone
 
 capstone-$(CS_VER).tar.gz:
-	$(WGET) --no-check-certificate -O capstone-$(CS_VER).tar.gz -c $(CS_TAR)
+	$(WGET) capstone-$(CS_VER).tar.gz $(CS_TAR)
 else
 
 capstone: capstone-sync

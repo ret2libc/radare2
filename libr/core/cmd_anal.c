@@ -1544,6 +1544,13 @@ static void core_anal_bytes(RCore *core, const ut8 *buf, int len, int nops, int 
 			}
 			pj_ki (pj, "size", size);
 			pj_ks (pj, "type", r_anal_optype_to_string (op.type));
+			{
+				const char *datatype = r_anal_datatype_to_string (op.datatype);
+				if (datatype) {
+					pj_ks (pj, "datatype", datatype);
+				}
+
+			}
 			pj_ks (pj, "reg", op.reg);
 			pj_ks (pj, "ireg", op.ireg);
 			pj_ki (pj, "scale", op.scale);
@@ -1590,12 +1597,6 @@ static void core_anal_bytes(RCore *core, const ut8 *buf, int len, int nops, int 
 				if (hint->opcode) {
 					printline ("ophint", "%s\n", hint->opcode);
 				}
-#if 0
-				// addr should not override core->offset + idx.. its silly
-				if (hint->addr != UT64_MAX) {
-					printline ("addr", "0x%08" PFMT64x "\n", (hint->addr + idx));
-				}
-#endif
 			}
 			printline ("prefix", "%" PFMT64u "\n", op.prefix);
 			printline ("id", "%d\n", op.id);
@@ -1625,6 +1626,10 @@ static void core_anal_bytes(RCore *core, const ut8 *buf, int len, int nops, int 
 			printline ("size", "%d\n", size);
 			printline ("sign", "%s\n", r_str_bool (op.sign));
 			printline ("type", "%s\n", r_anal_optype_to_string (op.type));
+			const char *datatype = r_anal_datatype_to_string (op.datatype);
+			if (datatype) {
+				printline ("datatype", "%s\n", datatype);
+			}
 			printline ("cycles", "%d\n", op.cycles);
 			if (op.failcycles) {
 				printline ("failcycles", "%d\n", op.failcycles);
@@ -1707,7 +1712,7 @@ static int bb_cmp(const void *a, const void *b) {
 	return ba->addr - bb->addr;
 }
 
-static int anal_fcn_list_bb(RCore *core, const char *input, bool one) {
+static bool anal_fcn_list_bb(RCore *core, const char *input, bool one) {
 	RDebugTracepoint *tp = NULL;
 	RListIter *iter;
 	RAnalBlock *b;
@@ -1739,7 +1744,7 @@ static int anal_fcn_list_bb(RCore *core, const char *input, bool one) {
 	if (mode == 'j') {
 		pj = pj_new ();
 		if (!pj) {
-			return NULL;
+			return false;
 		}
 		pj_a (pj);
 	}
@@ -2170,48 +2175,42 @@ static bool fcnNeedsPrefix(const char *name) {
 	return (!strchr (name, '.'));
 }
 
+static char * getFunctionName (RCore *core, ut64 off, const char *name, bool prefix) {
+	const char *fcnpfx = r_config_get (core->config, "anal.fcnprefix");
+	if (prefix) {
+		if (fcnNeedsPrefix (name)) {
+			if (!fcnpfx || !*fcnpfx) {
+				fcnpfx = "fcn";
+			}
+		}
+	} else {
+		fcnpfx = "";
+	}
+	if (strlen (name) < 4) {
+		return r_str_newf ("%s.%s", (*fcnpfx)? fcnpfx: "fcn", name);
+	}
+	if (r_reg_get (core->anal->reg, name, -1)) {
+		return r_str_newf ("%s.%08"PFMT64x, "fcn", off);
+	}
+	return strdup (name); // r_str_newf ("%s%s%s", fcnpfx, *fcnpfx? ".": "", name);
+}
+
 /* TODO: move into r_anal_fcn_rename(); */
 static bool setFunctionName(RCore *core, ut64 off, const char *_name, bool prefix) {
-	char *name, *nname = NULL;
-	RAnalFunction *fcn;
-	if (!core || !_name) {
-		return false;
-	}
-	const char *fcnpfx = r_config_get (core->config, "anal.fcnprefix");
-	if (!fcnpfx) {
-		fcnpfx = "fcn";
-	}
-	if (r_reg_get (core->anal->reg, _name, -1)) {
-		name = r_str_newf ("%s.%s", fcnpfx, _name);
-	} else {
-		name = strdup (_name);
-	}
-	fcn = r_anal_get_fcn_in (core->anal, off,
-				R_ANAL_FCN_TYPE_FCN | R_ANAL_FCN_TYPE_SYM | R_ANAL_FCN_TYPE_LOC);
+	r_return_val_if_fail (core && _name, false);
+	char *name = getFunctionName (core, off, _name, prefix);
+	RAnalFunction *fcn = r_anal_get_fcn_in (core->anal, off,
+			R_ANAL_FCN_TYPE_FCN | R_ANAL_FCN_TYPE_SYM | R_ANAL_FCN_TYPE_LOC);
 	if (!fcn) {
 		free (name);
 		return false;
 	}
-	if (prefix && fcnNeedsPrefix (name)) {
-		nname = r_str_newf ("%s.%s", fcnpfx, name);
-	} else {
-		nname = strdup (name);
-	}
-	char *oname = fcn->name;
-	RFlagItem *fi = r_flag_get (core->flags, fcn->name);
-	if (fi) {
-		r_flag_rename (core->flags, fi, nname);
-	} else {
-		// if we cant find a flag for that function.. create it?
-	}
-	fcn->name = strdup (nname);
+	free (fcn->name);
+	fcn->name = name;
 	if (core->anal->cb.on_fcn_rename) {
 		core->anal->cb.on_fcn_rename (core->anal,
-					core->anal->user, fcn, nname);
+				core->anal->user, fcn, name);
 	}
-	free (oname);
-	free (nname);
-	free (name);
 	return true;
 }
 
@@ -3128,6 +3127,10 @@ static int cmd_anal_fcn(RCore *core, const char *input) {
 
 // size: 0: bits; -1: any; >0: exact size
 static void __anal_reg_list(RCore *core, int type, int bits, char mode) {
+	if (mode == 'i') {
+		r_core_debug_ri (core, core->anal->reg, 0);
+		return;
+	}
 	RReg *hack = core->dbg->reg;
 	const char *use_color;
 	int use_colors = r_config_get_i (core->config, "scr.color");
@@ -3196,6 +3199,17 @@ static void __anal_reg_list(RCore *core, int type, int bits, char mode) {
 
 // XXX dup from drp :OOO
 void cmd_anal_reg(RCore *core, const char *str) {
+	if (0) {
+		/* enable this block when dr and ar use the same code but just using 
+		   core->dbg->reg or core->anal->reg and removing all the debugger
+		   dependent code */
+		RReg *reg = core->dbg->reg;
+		core->dbg->reg = core->anal->reg;
+		cmd_debug_reg (core, str);
+		core->dbg->reg = reg;
+		return;
+	}
+
 	int size = 0, i, type = R_REG_TYPE_GPR;
 	int bits = (core->anal->bits & R_SYS_BITS_64)? 64: 32;
 	int use_colors = r_config_get_i (core->config, "scr.color");
@@ -3309,10 +3323,10 @@ void cmd_anal_reg(RCore *core, const char *str) {
 	case 'r': // "arr"
 		switch (str[1]) {
 		case 'j': // "arrj"
-			r_core_debug_rr (core, core->dbg->reg, 'j');
+			r_core_debug_rr (core, core->anal->reg, 'j');
 			break;
 		default:
-			r_core_debug_rr (core, core->dbg->reg, 0);
+			r_core_debug_rr (core, core->anal->reg, 0);
 			break;
 		}
 		break;
@@ -3487,6 +3501,7 @@ void cmd_anal_reg(RCore *core, const char *str) {
 	case '*': // "ar*"
 	case 'R': // "arR"
 	case 'j': // "arj"
+	case 'i': // "arj"
 	case '\0': // "ar"
 		__anal_reg_list (core, type, size, str[0]);
 		break;
@@ -3815,7 +3830,6 @@ static void cmd_address_info(RCore *core, const char *addrstr, int fmt) {
 		addr = r_num_math (core->num, addrstr);
 	}
 	type = r_core_anal_address (core, addr);
-	int isp = 0;
 	switch (fmt) {
 	case 'j': {
 		PJ *pj = pj_new ();
@@ -6760,7 +6774,7 @@ static void cmd_agraph_print(RCore *core, const char *input) {
 			core->graph->force_update_seek = true;
 			core->graph->need_set_layout = true;
 			core->graph->layout = r_config_get_i (core->config, "graph.layout");
-			int ov = r_config_get_i (core->config, "scr.interactive");
+			int ov = r_cons_is_interactive ();
 			core->graph->need_update_dim = true;
 			r_core_visual_graph (core, core->graph, NULL, true);
 			r_config_set_i (core->config, "scr.interactive", ov);
@@ -7466,7 +7480,8 @@ static void cmd_anal_aav(RCore *core, const char *input) {
 	int archAlign = r_anal_archinfo (core->anal, R_ANAL_ARCHINFO_ALIGN);
 	seti ("search.align", archAlign);
 	r_config_set (core->config, "anal.in", "io.maps");
-	eprintf ("[x] Finding xrefs in noncode section with anal.in = 'io.maps'\n");
+	oldstr = r_print_rowlog (core->print, "Finding xrefs in noncode section with anal.in = 'io.maps");
+	r_print_rowlog_done (core->print, oldstr);
 
 	int vsize = 4; // 32bit dword
 	if (core->assembler->bits == 64) {
@@ -7708,7 +7723,7 @@ static int cmd_anal_all(RCore *core, const char *input) {
 			char *dh_orig = NULL;
 			if (!strncmp (input, "aaaaa", 5)) {
 				eprintf ("An r2 developer is coming to your place to manually analyze this program. Please wait for it\n");
-				if (r_config_get_i (core->config, "scr.interactive")) {
+				if (r_cons_is_interactive ()) {
 					r_cons_any_key (NULL);
 				}
 				goto jacuzzi;
