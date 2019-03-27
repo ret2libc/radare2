@@ -1293,10 +1293,10 @@ R_API int r_main_radare2(int argc, char **argv) {
 
 		/* check if file.path has changed */
 		if (iod && !strstr (iod->uri, "://")) {
-			const char *npath, *nsha1;
+			const char *npath;
 			char *path = strdup (r_config_get (r.config, "file.path"));
 			has_project = r_core_project_open (&r, r_config_get (r.config, "prj.name"), threaded);
-			iod = r.io ? r_io_desc_get (r.io, fh->fd) : NULL;
+			iod = r.io? r_io_desc_get (r.io, fh->fd): NULL;
 			if (has_project) {
 				r_config_set (r.config, "bin.strings", "false");
 			}
