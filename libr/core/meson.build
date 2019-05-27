@@ -100,7 +100,8 @@ r_core_deps = [
   sdb_dep,
   spp_dep,
   gdb_dep,
-  java_dep
+  java_dep,
+  fort_dep,
 ]
 
 if use_libuv

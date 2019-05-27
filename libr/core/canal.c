@@ -6,7 +6,7 @@
 #include <r_core.h>
 #include <r_bin.h>
 #include <sdb/ht_uu.h>
-
+#include <libfort/fort.h>
 #include <string.h>
 
 #define HINTCMD_ADDR(hint,x,y) if((hint)->x) \
@@ -113,7 +113,7 @@ static char *is_string_at(RCore *core, ut64 addr, int *olen) {
 		}
 		return (char*) str;
 	}
-	
+
 	ut64 *cstr = (ut64*)str;
 	ut64 lowptr = cstr[0];
 	if (lowptr >> 32) { // must be pa mode only
@@ -125,7 +125,7 @@ static char *is_string_at(RCore *core, ut64 addr, int *olen) {
 		if (ptr >> 32) { // must be pa mode only
 			ptr &= UT32_MAX;
 		}
-		if (ptr) {	
+		if (ptr) {
 			r_io_read_at (core->io, ptr, rstr, sizeof (rstr));
 			rstr[127] = 0;
 			ret = is_string (rstr, 128, &len);
@@ -2455,6 +2455,19 @@ static int fcn_print_verbose(RCore *core, RAnalFunction *fcn, bool use_color) {
 }
 
 static int fcn_list_verbose(RCore *core, RList *fcns) {
+	ft_table_t *table = ft_create_table ();
+	/* Set "header" type for the first row */
+	ft_set_cell_prop (table, 0, FT_ANY_COLUMN, FT_CPROP_ROW_TYPE, FT_ROW_HEADER);
+
+	ft_write_ln (table, "N", "Driver", "Time", "Avg Speed");
+
+	ft_write_ln (table, "1", "Ricciardo", "1:25.945", "222.128");
+	ft_write_ln (table, "2", "Hamilton", "1:26.373", "221.027");
+	ft_write_ln (table, "3", "Verstappen", "1:26.469", "220.782");
+
+	printf ("%s\n", ft_to_string (table));
+	ft_destroy_table (table);
+
 	bool use_color = r_config_get_i (core->config, "scr.color");
 	int headeraddr_width = 10;
 	char *headeraddr = "==========";
@@ -2550,7 +2563,7 @@ static int fcn_print_makestyle(RCore *core, RList *fcns, char mode) {
 		refs = r_core_anal_fcn_get_calls (core, fcn);
 		// Uniquify the list by ref->addr
 		refs = r_list_uniq (refs, (RListComparator)RAnalRef_cmp);
-	
+
 		// don't enter for functions with 0 refs
 		if (!r_list_empty (refs)) {
 			if (pj) { // begin json output of function
@@ -3006,7 +3019,7 @@ R_API int r_core_anal_fcn_list(RCore *core, const char *input, const char *rad) 
 			info->name = r_core_anal_fcn_name (core, fcn);
 			info->pitv = (RInterval) {fcn->addr, r_anal_fcn_size (fcn)};
 			info->vitv = info->pitv;
-			info->extra = sdb_itoa (fcn->bits, temp, 10); 
+			info->extra = sdb_itoa (fcn->bits, temp, 10);
 			info->perm  = -1;
 			r_list_append (flist, info);
 		}
@@ -5015,7 +5028,7 @@ R_API void r_core_anal_inflags(RCore *core, const char *glob) {
 	glob = r_str_trim_ro (glob);
 	char *addr;
 	r_flag_foreach_glob (core->flags, glob, __cb, addrs);
-	// should be sorted already 
+	// should be sorted already
 	r_list_sort (addrs, (RListComparator)__addrs_cmp);
 	r_list_foreach (addrs, iter, addr) {
 		if (!iter->n || r_cons_is_breaked ()) {

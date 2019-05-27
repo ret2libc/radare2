@@ -629,3 +629,21 @@ ar_dep = declare_dependency(
 if use_ptrace_wrap
   subdir('ptrace-wrap')
 endif
+
+
+# handle libfort dependency
+libfort_files = [
+  'libfort/fort.c',
+]
+
+libfort_inc = [platform_inc, include_directories('libfort')]
+
+libr2fort = static_library('r2fort', libfort_files,
+  include_directories: libfort_inc,
+  implicit_include_directories: false
+)
+
+fort_dep = declare_dependency(
+  link_with: libr2fort,
+  include_directories: libfort_inc
+)
