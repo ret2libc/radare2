@@ -324,6 +324,7 @@ else
 	cd ../../radare2-webui/www/m && git pull ; npm i ; $(MAKE) release
 endif
 
+ifeq ($(USE_LIB_TREESITTER),1)
 tree-sitter-build: tree-sitter/libtree-sitter.$(EXT_AR)
 
 tree-sitter/libtree-sitter.$(EXT_AR): tree-sitter/lib/src/lib.o
@@ -332,6 +333,11 @@ tree-sitter/libtree-sitter.$(EXT_AR): tree-sitter/lib/src/lib.o
 
 tree-sitter/lib/src/lib.o:
 	$(CC) $(NEWSHELL_CFLAGS) -c tree-sitter/lib/src/lib.c -o $@ -Itree-sitter/lib/include -Itree-sitter/lib/src $(CFLAGS)
+
+SHLRS+=tree-sitter/libtree-sitter.a
+else
+tree-sitter-build:
+endif
 
 tree-sitter-sync:
 	rm -rf tree-sitter tree-sitter.vc
@@ -353,7 +359,6 @@ radare2-shell-parser/src/parser.o: radare2-shell-parser/src/parser.c
 radare2-shell-parser/src/scanner.o: radare2-shell-parser/src/scanner.c
 	$(CC) -c radare2-shell-parser/src/scanner.c -o $@ -Iradare2-shell-parser/src/tree_sitter -Itree-sitter/lib/include $(CFLAGS)
 
-SHLRS+=tree-sitter/libtree-sitter.a
 SHLRS+=radare2-shell-parser/libshell-parser.a
 
 www-sync-m sync-www-m: ../../radare2-webui/dist/m
