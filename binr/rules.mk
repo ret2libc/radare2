@@ -1,6 +1,7 @@
 BINR_PROGRAM=1
 include ../../libr/config.mk
 include ../../shlr/zip/deps.mk
+include ../../shlr/radare2-shell-parser-deps.mk
 
 ifeq (,$(findstring tcc,${CC}))
 CFLAGS+=-pie
