@@ -14,7 +14,11 @@ OBJS+=task.o panels.o pseudo.o vmarks.o anal_tp.o anal_objc.o blaze.o cundo.o
 OBJS+=cannotated_code.o
 
 CFLAGS+=-I../../shlr/heap/include
+ifeq ($(USE_LIB_TREESITTER),1)
+LDFLAGS+=${LIBTREE_SITTER}
+else
 CFLAGS+=-I../../shlr/tree-sitter/lib/include -I../../shlr/radare2-shell-parser/src/tree_parser
+endif
 CFLAGS+=-DR2_PLUGIN_INCORE -I../../shlr
 LDFLAGS+=${DL_LIBS}
 LDFLAGS+=${CLOCK_LDFLAGS}
