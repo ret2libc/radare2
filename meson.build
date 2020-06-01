@@ -259,6 +259,20 @@ else
   message('Using bundled xxhash library')
 endif
 
+# handle tree-sitter library
+tree_sitter_dep = dependency('tree-sitter', required: false)
+use_sys_treesitter = false
+if not tree_sitter_dep.found()
+  tree_sitter_dep = cc.find_library('tree-sitter', required: false)
+endif
+
+if tree_sitter_dep.found() and get_option('use_sys_tree_sitter')
+  message('Using system tree-sitter library')
+  use_sys_treesitter = true
+else
+  message('Using bundled tree-sitter library')
+endif
+
 # handle openssl library
 sys_openssl = dependency('openssl', required: false)
 use_sys_openssl = false
@@ -313,6 +327,7 @@ userconf.set10('HAVE_LIB_MAGIC', sys_magic.found())
 userconf.set10('USE_LIB_MAGIC', use_syslib_magic)
 userconf.set10('HAVE_LIB_XXHASH', sys_xxhash.found())
 userconf.set10('USE_LIB_XXHASH', use_sys_xxhash)
+userconf.set10('USE_LIB_TREESITTER', use_sys_treesitter)
 userconf.set10('DEBUGGER', has_debugger)
 userconf.set('PREFIX', r2_prefix)
 if host_machine.system() == 'windows'

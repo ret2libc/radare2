@@ -233,8 +233,7 @@ sdb_gen_cmd = [
 ]
 
 # handle tree-sitter
-tree_sitter_dep = dependency('tree-sitter', required: false)
-if not tree_sitter_dep.found() or not get_option('use_sys_tree_sitter')
+if not use_sys_treesitter
   message('Use bundled tree-sitter')
   tree_sitter_path = 'tree-sitter'
   tree_sitter_vc_path = 'tree-sitter.vc'
