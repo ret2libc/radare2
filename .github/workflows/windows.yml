@@ -1,0 +1,16 @@
+name: Windows
+
+on:
+  push:
+    branches:
+    - '*windows*'
+
+jobs:
+  build:
+    name: windows
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: microsoft/setup-msbuild@v1.0.0
+      with:
+        vs-version: [16.6, 16.6]
