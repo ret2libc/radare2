@@ -16,4 +16,4 @@ jobs:
       with:
           vs-version: 15.9
     - name: Install meson and ninja
-      run: %PYTHON%\python.exe -m pip install meson ninja
+      run: '%PYTHON%\python.exe -m pip install meson ninja'
