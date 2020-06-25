@@ -21,3 +21,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install meson ninja
+    - name: meson setup
+      run: meson build
+    - name: ninja build
+      run: ninja -C build
