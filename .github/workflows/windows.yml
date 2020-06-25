@@ -11,9 +11,13 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.0
+    - uses: microsoft/setup-msbuild@v1.0.0
       with:
-          vs-version: 15.9
-    - name: Install meson and ninja
-      run: '%PYTHON%\python.exe -m pip install meson ninja'
+        vs-version: 15.9
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install meson ninja
