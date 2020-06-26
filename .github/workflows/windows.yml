@@ -19,7 +19,7 @@ jobs:
         pip install meson ninja
     - name: Build radare2
       run: |
-        call .github\vsdevenv.bat
+        call ".github\vsdevenv.bat"
         meson build --backend vs2019
         msbuild build\radare2.sln
       env:
