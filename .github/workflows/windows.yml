@@ -12,8 +12,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: microsoft/setup-msbuild@v1.0.0
-    - name: Activate VsDevCmd
-      run: .github\vsdevenv.bat
     - uses: actions/setup-python@v2
       with:
         python-version: '3.8'
@@ -22,6 +20,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install meson ninja
     - name: meson setup
-      run: meson build --backend vs
-    - name: ninja build
-      run: ninja -C build
+      run: |
+        .github\vsdevenv.bat
+        meson build --backend vs
+        ninja -C build
