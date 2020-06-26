@@ -26,6 +26,6 @@ jobs:
         .github\vsdevenv.bat
         meson build --backend vs2019
         msbuild build\radare2.sln
-      env:
-        CC: cl
-        CXX: cl
+#      env:
+#        CC: cl
+#        CXX: cl
