@@ -20,7 +20,7 @@ jobs:
     - name: Build radare2
       shell: pwsh
       run: |
-        .github\vsdevenv.bat
+        & .github\vsdevenv.bat
         meson build --backend vs2019
         msbuild build\radare2.sln
       env:
