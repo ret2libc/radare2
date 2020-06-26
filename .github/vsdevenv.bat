@@ -15,3 +15,5 @@ for /f "delims== tokens=1,2" %%a in ('set') do (
   echo ::set-env name=%%a::%%b
 )
 endlocal
+meson build --backend vs2019
+msbuild build\radare2.sln
