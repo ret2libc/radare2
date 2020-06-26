@@ -24,5 +24,7 @@ jobs:
     - name: meson setup
       run: |
         .github\vsdevenv.bat
+        echo ::set-env name=CC::cl
+        echo ::set-env name=CXX::cl
         meson build --backend vs
         ninja -C build
