@@ -21,6 +21,5 @@ jobs:
         pip install meson ninja
     - name: meson setup
       run: |
-        .github\vsdevenv.bat
-        meson build --backend vs
-        ninja -C build
+        .github\vsdevenv.bat meson build --backend vs
+        .github\vsdevenv.bat ninja -C build
