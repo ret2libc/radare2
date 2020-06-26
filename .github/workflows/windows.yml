@@ -44,6 +44,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install meson ninja
+    - name: print help
+      shell: pwsh
+      run: vswhere.exe -version [15.9,15.9] -property installationPath
     - name: Configure radare2 project with meson
       shell: pwsh
       run: |
