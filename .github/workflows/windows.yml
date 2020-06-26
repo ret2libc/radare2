@@ -26,5 +26,5 @@ jobs:
         .github\vsdevenv.bat
         echo ::set-env name=CC::cl
         echo ::set-env name=CXX::cl
-        meson build --backend vs
+        meson build --backend vs2019
         ninja -C build
