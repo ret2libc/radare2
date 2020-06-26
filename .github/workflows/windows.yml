@@ -50,7 +50,7 @@ jobs:
       run: |
         .github\vsdevenv.ps1
         meson build --backend ${{ matrix.backend }} ${{ matrix.meson_options }}
-        msbuild build\radare2.sln
+        msbuild build\radare2.sln -m -v:n
     - name: Build radare2 with ninja
       if: matrix.backend == 'ninja'
       shell: pwsh
