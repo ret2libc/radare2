@@ -47,7 +47,7 @@ jobs:
     - name: Configure radare2 project with meson
       shell: pwsh
       run: |
-        .github\vsdevenv.ps1 "[${{ matrix.vsversion }}, ${{ matrix.vsversion }}]"
+        .github\vsdevenv.ps1 "[${{ matrix.vsversion }},${{ matrix.vsversion }}]"
         meson build --backend ${{ matrix.backend }} ${{ matrix.meson_options }}
     - name: Build with msbuild
       if: matrix.backend != 'ninja'
