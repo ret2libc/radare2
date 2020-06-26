@@ -23,7 +23,7 @@ jobs:
       run: vswhere.exe -prerelease -latest -property installationPath
     - name: meson setup
       run: |
-        .github\vsdevenv.bat
+        %comspec% /c ".github\vsdevenv.bat"
         meson build --backend vs2019
         msbuild build\radare2.sln
       env:
