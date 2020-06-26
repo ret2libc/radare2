@@ -1,4 +1,4 @@
-$installationPath = vswhere.exe -version 16.9 -property installationPath
+$installationPath = vswhere.exe -version [15.0,16.10) -property installationPath
 if ($installationPath -and (test-path "$installationPath\Common7\Tools\vsdevcmd.bat")) {
   & "${env:COMSPEC}" /s /c "`"$installationPath\Common7\Tools\vsdevcmd.bat`" -no_logo && set" | foreach-object {
     $name, $value = $_ -split '=', 2
