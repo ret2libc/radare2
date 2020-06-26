@@ -22,9 +22,11 @@ jobs:
     - name: print stuff
       run: vswhere.exe -prerelease -latest -property installationPath
     - name: meson setup
+      shell: pwsh
       run: |
-        .github\vsdevenv.bat
         echo ::set-env name=CC::cl
         echo ::set-env name=CXX::cl
-        meson build --backend vs2019
+        .github\vsdevenv.bat
+        & .github\workflows\vsenv.bat
+        meson build --backend vs
         ninja -C build
