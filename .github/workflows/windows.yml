@@ -9,20 +9,52 @@ jobs:
   build:
     name: windows
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [vs2017_static, vs2017, vs2019_static, clang_cl]
+        include:
+          - name: vs2017_static
+            compiler: cl
+            backend: vs2017
+            vsversion: 15.9
+            meson_options: --default-library=static -Dstatic_runtime=true
+          - name: vs2017
+            compiler: cl
+            backend: vs2017
+            vsversion: 15.9
+            meson_options: --default-library=shared
+          - name: vs2019_static
+            compiler: cl
+            backend: ninja
+            vsversion: 16.6
+            meson_options: --default-library=static -Dstatic_runtime=true
+          - name: clang_cl
+            compiler: clang-cl
+            backend: ninja
+            vsversion: 16.6
+            meson_options: --default-library=shared
     steps:
     - uses: actions/checkout@v2
     - uses: microsoft/setup-msbuild@v1.0.0
+      with:
+        vs-version: ${{ matrix.vsversion }}
     - uses: actions/setup-python@v2
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install meson ninja
-    - name: Build radare2
+    - name: Build radare2 with msbuild
+      if: matrix.backend != 'ninja'
       shell: pwsh
       run: |
         .github\vsdevenv.ps1
-        meson build --backend vs2019
+        meson build --backend ${{ matrix.backend }} ${{ matrix.meson_options }}
         msbuild build\radare2.sln
-      env:
-        CC: cl
-        CXX: cl
+    - name: Build radare2 with ninja
+      if: matrix.backend == 'ninja'
+      shell: pwsh
+      run: |
+        .github\vsdevenv.ps1
+        meson build --backend ${{ matrix.backend }}
+        ninja -C build
