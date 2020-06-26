@@ -1,19 +1,10 @@
-@echo off
-
-SET VSWHERE="C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere"
-
-:: See https://github.com/microsoft/vswhere/wiki/Find-VC
-for /f "usebackq delims=*" %%i in (`%VSWHERE% -latest -property installationPath`) do (
-  call "%%i"\Common7\Tools\vsdevcmd.bat %*
+@if not defined _echo echo off
+for /f "usebackq delims=" %%i in (`vswhere.exe -prerelease -latest -property installationPath`) do (
+  if exist "%%i\Common7\Tools\vsdevcmd.bat" (
+    %comspec% /k "%%i\Common7\Tools\vsdevcmd.bat" %*
+    exit /b
+  )
 )
 
-:: Loop over all environment variables and make them global using set-env.
-:: See: https://help.github.com/en/articles/development-tools-for-github-actions#set-an-environment-variable-set-env
-:: See: https://stackoverflow.com/questions/39183272/loop-through-all-environmental-variables-and-take-actions-depending-on-prefix
-setlocal
-for /f "delims== tokens=1,2" %%a in ('set') do (
-  echo ::set-env name=%%a::%%b
-)
-endlocal
-meson build --backend vs2019
-msbuild build\radare2.sln
+rem Instance or command prompt not found
+exit /b 2
