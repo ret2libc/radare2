@@ -31,7 +31,7 @@ jobs:
       shell: pwsh
       run: |
         .github\vsdevenv.ps1
-        meson --prefix=radare2-install build ${{ matrix.meson_options }}
+        meson --prefix=$PWD\radare2-install build ${{ matrix.meson_options }}
         ninja -C build
         ninja -C build install
     - uses: actions/checkout@v2
