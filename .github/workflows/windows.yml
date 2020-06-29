@@ -43,8 +43,7 @@ jobs:
       run: 7z a radare2-${{ matrix.name }}-%R2_VERSION%.zip $PWD\radare2-install
     - uses: actions/checkout@v2
       with:
-        repository: redareorg/radare2-win-installer
-        path: .
+        repository: radareorg/radare2-win-installer
     - name: Create installer
       shell: pwsh
       run: iscc radare2-win-installer\radare2.iss /DRadare2Location=..\radare2\radare2-install\* /DLicenseLocation=..\COPYING.LESSER /DIcoLocation=radare2.ico /DMyAppVersion=%R2_VERSION%
