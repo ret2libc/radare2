@@ -398,9 +398,77 @@ libr_pc = configure_file(
   install_dir: join_paths(get_option('libdir'), 'pkgconfig')
 )
 
-subdir('shlr')
+sdb_proj = subproject('sdb')
+sdb_dep = sdb_proj.get_variable('sdb_dep')
+sdb_exe = sdb_proj.get_variable('sdb_exe')
+sdb_gen_cmd_script = '''#script
+import os
+import sys
+sdb_exe = r'@0@'
+outfile = sys.argv[1]
+infiles = sys.argv[2:]
+if os.name == 'nt':
+    # DO NOT replace chr(92) below with a backslash
+    infiles, sdb_exe, outfile = map(lambda x: x.replace('/', chr(92)), [' '.join(infiles), sdb_exe, outfile])
+    os.system('type {} | {} {} ='.format(infiles, sdb_exe, outfile))
+else:
+    infiles = ' '.join(infiles)
+    os.system('cat {} | {} {} ='.format(infiles, sdb_exe, outfile))
+'''.format(sdb_exe.full_path())
+
+sdb_gen_cmd = [
+  py3_exe,
+  '-c',
+  sdb_gen_cmd_script,
+  '@OUTPUT@',
+  '@INPUT@'
+]
+
+spp_proj = subproject('spp')
+spp_dep = spp_proj.get_variable('spp_dep')
+
+# handle zlib dependency
+zlib_dep = dependency('zlib', required: false)
+if not zlib_dep.found() or not get_option('use_sys_zlib')
+  message('Use bundled zlib')
+
+  zlib_files = [
+    'shlr/zip/zlib/adler32.c',
+    'shlr/zip/zlib/compress.c',
+    'shlr/zip/zlib/crc32.c',
+    'shlr/zip/zlib/deflate.c',
+    'shlr/zip/zlib/gzclose.c',
+    'shlr/zip/zlib/gzlib.c',
+    'shlr/zip/zlib/gzread.c',
+    'shlr/zip/zlib/gzwrite.c',
+    'shlr/zip/zlib/infback.c',
+    'shlr/zip/zlib/inffast.c',
+    'shlr/zip/zlib/inflate.c',
+    'shlr/zip/zlib/inftrees.c',
+    'shlr/zip/zlib/trees.c',
+    'shlr/zip/zlib/uncompr.c',
+    'shlr/zip/zlib/zutil.c'
+  ]
+
+  zlib_inc = [platform_inc, include_directories('shlr/zip/zlib')]
+
+  libr2zlib = static_library('r2zlib', zlib_files,
+			     include_directories: zlib_inc,
+			     implicit_include_directories: false
+			    )
+
+  zlib_dep = declare_dependency(
+    link_with: libr2zlib,
+    include_directories: zlib_inc
+  )
+else
+  message('Use system-provided zlib library')
+endif
 
 subdir('libr/util')
+
+subdir('shlr')
+
 subdir('libr/hash')
 subdir('libr/crypto')
 subdir('libr/socket')

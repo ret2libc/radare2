@@ -7,7 +7,7 @@ configure_file(input: 'config.def.h',
 
 spp_files = [
   'spp.c',
-  's_api.c'
+  'r_api.c'
 ]
 
 libspp_static = static_library('spp', spp_files,
