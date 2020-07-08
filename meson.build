@@ -7,6 +7,7 @@ pkgconfig_mod = import('pkgconfig')
 # deal with subprojects directory
 # this is necessary because meson require a subproject dir that shall only be
 # accessed through `subproject()`
+message('Configuring "subprojects" directory')
 if host_machine.system() == 'windows'
   # on windows creating symlinks require admin privileges. In this case just create a subprojects dir with the subprojects needed
   run_command(py3_exe, 'sys/meson_windows_subprojects_init.py', meson.current_source_dir())

@@ -3,8 +3,14 @@ import shutil
 import sys
 
 srcdir = sys.argv[1]
-os.mkdir(os.path.join(srcdir, "subprojects"))
+try:
+    os.mkdir(os.path.join(srcdir, "subprojects"))
+except FileExistsError:
+    pass
 
 subprojects = ['spp', 'sdb']
 for proj in subprojects:
-    shutil.copy(os.path.join(srcdir, "shlr", proj), os.path.join(srcdir, "subprojects"))
+    try:
+        shutil.copy(os.path.join(srcdir, "shlr", proj), os.path.join(srcdir, "subprojects", proj))
+    except FileExistsError:
+        pass
