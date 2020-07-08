@@ -4,6 +4,11 @@ py3_exe = import('python').find_installation('python3')
 git_exe = find_program('git', required: false)
 pkgconfig_mod = import('pkgconfig')
 
+# create subprojects link to shlr
+# this is necessary because meson require a subproject dir that shall only be
+# accessed through `subproject()`
+run_command(py3_exe, '-c', 'import os; os.symlink("@0@/shlr", "@0@/subprojects", target_is_directory=True)'.format(meson.current_source_dir()))
+
 # Get r2 version
 r2_version = 'unknown-error'
 r2_version_major = 0
