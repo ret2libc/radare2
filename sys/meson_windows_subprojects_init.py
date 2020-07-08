@@ -11,6 +11,6 @@ except FileExistsError:
 subprojects = ['spp', 'sdb']
 for proj in subprojects:
     try:
-        shutil.copy(os.path.join(srcdir, "shlr", proj), os.path.join(srcdir, "subprojects", proj))
+        shutil.copytree(os.path.join(srcdir, "shlr", proj), os.path.join(srcdir, "subprojects", proj))
     except FileExistsError:
         pass
