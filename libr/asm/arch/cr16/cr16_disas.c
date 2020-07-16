@@ -994,13 +994,16 @@ int cr16_decode_movz(const ut8 *instr, struct cr16_cmd *cmd)
 	return ret;
 }
 
-int cr16_decode_movd(const ut8 *instr, struct cr16_cmd *cmd)
+int cr16_decode_movd(const ut8 *instr, struct cr16_cmd *cmd, int len)
 {
 	int ret = 4;
 	ut16 c;
 	ut16 imm;
 	ut32 imm32;
 
+	if (len < 4) {
+		return -1;
+	}
 	c = r_read_le16 (instr);
 	imm = r_read_at_le16 (instr, 2);
 
@@ -1133,10 +1136,15 @@ int cr16_decode_biti(const ut8 *instr, struct cr16_cmd *cmd)
 	return ret;
 }
 
-int cr16_decode_command(const ut8 *instr, struct cr16_cmd *cmd)
+int cr16_decode_command(const ut8 *instr, struct cr16_cmd *cmd, int len)
 {
+	// TODO: use len to check if enough bytes are present in `instr` before
+	// reading from it
 	int ret;
 	ut16 in;
+	if (len < 2) {
+		return -1;
+	}
 	in = r_read_le16 (instr);
 
 	switch (cr16_get_opcode_low(in)) {
@@ -1251,7 +1259,7 @@ int cr16_decode_command(const ut8 *instr, struct cr16_cmd *cmd)
 
 	switch (in >> 10) {
 	case CR16_MOVD:
-		ret = cr16_decode_movd(instr, cmd);
+		ret = cr16_decode_movd(instr, cmd, len);
 		break;
 	}
 
