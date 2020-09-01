@@ -13,9 +13,6 @@ on:
     - 'release-*'
 
 jobs:
-  # TODO: add build check for capstone 3
-  # TODO: add build check for capstone 4
-  # TODO: add build check for capstone 5
   # TODO: build r2-bindings
 
   build-and-test:
@@ -167,6 +164,60 @@ jobs:
     - name: Upload coverage info
       uses: codecov/codecov-action@v1
       if: matrix.coverage == '1' && matrix.enabled
+
+  build-capstones:
+    name: Build with capstone ${{ matrix.capstone_version }}
+    runs-on: ubuntu-latest
+    if: contains(github.head_ref, 'capstone') || contains(github.ref, 'release-') || github.event_name == 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [capstone-v3-build, capstone-v4-build, capstone-v5-build]
+        include:
+          - name: capstone-v3-build
+            capstone_version: 3.0.5
+            capstone_tag: 3.0.5
+          - name: capstone-v4-build
+            capstone_version: 4.0.2
+            capstone_tag: 4.0.2
+          - name: capstone-v5-build
+            capstone_version: 5
+            capstone_commit: f8b1b833015a4ae47110ed068e0deb7106ced66d
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install python
+      run: sudo apt-get --assume-yes install python3-wheel python3-setuptools wget
+    - name: Install meson and ninja
+      run: pip3 install --user meson==0.52.0 ninja==1.10.0
+    - name: Download capstone ${{ matrix.capstone_version }} with release
+      if: matrix.capstone_tag
+      run: |
+        cd shlr
+        wget https://github.com/aquynh/capstone/archive/${{ matrix.capstone_tag }}.tar.gz
+    - name: Download capstone ${{ matrix.capstone_version }} with git commit
+      if: matrix.capstone_commit
+      run: |
+        cd shlr
+        git clone https://github.com/aquynh/capstone.git
+        cd capstone
+        git checkout ${{ matrix.capstone_commit }}
+    - name: Build with Meson
+      run: |
+        export PATH=${HOME}/.local/bin:${PATH}
+        meson --prefix=${HOME} build && ninja -C build
+    - name: Install with meson
+      run: |
+        # Install the radare2
+        export PATH=${HOME}/bin:${HOME}/.local/bin:${PATH}
+        export LD_LIBRARY_PATH=${HOME}/lib/$(uname -m)-linux-gnu:${HOME}/lib:${HOME}/lib64:${LD_LIBRARY_PATH}
+        export PKG_CONFIG_PATH=${HOME}/lib/pkgconfig:${HOME}/lib/$(uname -m)-linux-gnu/pkgconfig:${PKG_CONFIG_PATH}
+        ninja -C build install
+    - name: Check radare2 starts
+      run: |
+        export PATH=${HOME}/bin:${HOME}/.local/bin:${PATH}
+        export LD_LIBRARY_PATH=${HOME}/lib/$(uname -m)-linux-gnu:${HOME}/lib:${HOME}/lib64:${LD_LIBRARY_PATH}
+        export PKG_CONFIG_PATH=${HOME}/lib/pkgconfig:${HOME}/lib/$(uname -m)-linux-gnu/pkgconfig:${PKG_CONFIG_PATH}
+        radare2 -v
 
   build-centos6:
     name: Build on CentOS 6
@@ -613,6 +664,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [
       build-and-test,
+      build-capstones,
       build-centos6,
       build-debian,
       build-static,
