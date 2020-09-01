@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [linux-acr-gcc-tests, linux-acr-clang-build, linux-acr-clang-tests, linux-meson-gcc-build, linux-meson-gcc-tests, linux-meson-gcc-newshell-tests, macos-clang-tests]
+        name: [linux-acr-gcc-tests, linux-acr-clang-build, linux-acr-clang-tests, linux-meson-gcc-build, linux-meson-gcc-tests, linux-meson-gcc-newshell-tests, macos-clang-tests, linux-gcc-tests-asan]
         include:
           - name: linux-acr-gcc-tests
             os: ubuntu-latest
@@ -72,6 +72,17 @@ jobs:
             compiler: clang
             run_tests: true
             enabled: true
+          - name: linux-gcc-tests-asan
+            os: ubuntu-latest
+            build_system: meson
+            compiler: gcc
+            meson_options: -Db_sanitize=address
+            run_tests: true
+            enabled: ${{ github.event_name != 'pull_request' || contains(github.head_ref, 'asan') }}
+            env:
+              - LSAN_OPTIONS: 'detect_leaks=0'
+              - ASAN_OPTIONS: 'detect_odr_violation=0'
+              - CFLAGS: '-DR2_ASSERT_STDOUT=1'
 
     steps:
     - uses: actions/checkout@v2
@@ -106,7 +117,7 @@ jobs:
       if: matrix.build_system == 'meson' && matrix.enabled
       run: |
         export PATH=${HOME}/.local/bin:${PATH}
-        meson --prefix=${HOME} build && ninja -C build
+        meson --prefix=${HOME} $ {{ matrix.meson_options }} build && ninja -C build
       env:
         CC: ${{ matrix.compiler }}
     - name: Install with make
