@@ -11,7 +11,7 @@ jobs:
     container: debian:buster
     steps:
     - name: Install tools
-      run: apt-get update && apt-get install --yes patch unzip git gcc make curl pkg-config xz-utils
+      run: apt-get update && apt-get install --yes patch unzip git gcc make curl pkg-config xz-utils wget file
     - name: Checkout r2
       run: |
         git clone https://github.com/${{ github.repository }}
