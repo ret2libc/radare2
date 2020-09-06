@@ -7,7 +7,6 @@ on:
 jobs:
   build-continuous-deb:
     name: Continuous deb build
-    needs: [build-and-test]
     runs-on: ubuntu-latest
     container: debian:buster
     steps:
