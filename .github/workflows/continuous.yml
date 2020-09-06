@@ -18,17 +18,22 @@ jobs:
         cd radare2
         git fetch origin ${{ github.ref }}
         git checkout -b local_branch FETCH_HEAD
+    - name: Extract r2 version
+      shell: bash
+      run: echo "##[set-output name=branch;]$(python sys/version.py)"
+      id: extract_version
+      working-directory: radare2
     - name: Preparing the deb package
       run: |
         sys/debian.sh
-        mv radare2_*_amd64.deb ../
-        mv radare2-dev_*_amd64.deb ../
       working-directory: radare2
     - name: Upload deb file
       uses: actions/upload-artifact@v2
       with:
-        path: radare2_*_amd64.deb
+        name: radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb
+        path: radare2/radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb
     - name: Upload -dev deb file
       uses: actions/upload-artifact@v2
       with:
-        path: radare2-dev_*_amd64.deb
+        name: radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb
+        path: radare2/radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb
