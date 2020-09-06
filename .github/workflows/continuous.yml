@@ -21,8 +21,8 @@ jobs:
     - name: Preparing the deb package
       run: |
         sys/debian.sh
-        mv radare2_*_amd64.deb ./
-        mv radare2-dev_*_amd64.deb ./
+        mv radare2_*_amd64.deb ../
+        mv radare2-dev_*_amd64.deb ../
       working-directory: radare2
     - name: Upload deb file
       uses: actions/upload-artifact@v2
