@@ -56,4 +56,4 @@ jobs:
       run: .github/upload.sh ./radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb/radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb ./radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb/radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        UPLOADTOOL_BODY: Continuous build ${{ env.GITHUB_SHA }}
+        UPLOADTOOL_BODY: Continuous build ${{ github.sha }}

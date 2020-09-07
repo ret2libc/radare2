@@ -130,8 +130,6 @@ done
 $shatool "$@"
 
 echo "Publish the release..."
-
 release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
     --data '{"draft": false}' "$release_url")
-
 echo "$release_infos"
