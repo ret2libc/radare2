@@ -48,6 +48,9 @@ jobs:
       shell: bash
       run: echo "##[set-output name=branch;]$(python sys/version.py)"
       id: extract_version
+    - uses: actions/download-artifact@v2
+    - name: Display structure of downloaded files
+      run: ls -R
     - name: Upload files
       shell: bash
       run: |
