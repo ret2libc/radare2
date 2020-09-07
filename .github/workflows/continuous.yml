@@ -61,12 +61,21 @@ jobs:
     - uses: actions/download-artifact@v2
     - name: Display structure of downloaded files
       run: ls -R
-    # - name: Upload radare2 debian:buster package
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #       upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #       asset_path: ./radare2-debian-buster-deb/radare2_amd64.deb
-    #       asset_name: radare2-debian-buster_${{ steps.extract_version.outputs.branch }}_amd64.deb
-    #       asset_content_type: application/zip
+    - name: Upload radare2 .deb package
+      uses: actions/upload-release-asset@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb/radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb
+          asset_name: radare2_${{ steps.extract_version.outputs.branch }}_amd64.deb
+          asset_content_type: application/zip
+    - name: Upload radare2-dev .deb package
+      uses: actions/upload-release-asset@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb/radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb
+          asset_name: radare2-dev_${{ steps.extract_version.outputs.branch }}_amd64.deb
+          asset_content_type: application/zip
