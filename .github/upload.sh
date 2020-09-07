@@ -95,7 +95,7 @@ if [ "$GITHUB_SHA" != "$target_commit_sha" ] ; then
   BODY="$UPLOADTOOL_BODY"
 
   release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
-       --data '{"tag_name": "'"$RELEASE_NAME"'","target_commitish": "'"$GITHUB_SHA"'","name": "'"$RELEASE_TITLE"'","body": "'"$BODY"'","draft": true,"prerelease": '$is_prerelease'}' "https://api.github.com/repos/$REPO_SLUG/releases")
+       --data '{"tag_name": "'"$RELEASE_NAME"'","target_commitish": "'"$GITHUB_SHA"'","name": "'"$RELEASE_TITLE"'","body": "'"$BODY"'","draft": false,"prerelease": '$is_prerelease'}' "https://api.github.com/repos/$REPO_SLUG/releases")
 
   echo "$release_infos"
 
@@ -128,3 +128,10 @@ for FILE in "$@" ; do
 done
 
 $shatool "$@"
+
+echo "Publish the release..."
+
+release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
+    --data '{"draft": false}' "$release_url")
+
+echo "$release_infos"
