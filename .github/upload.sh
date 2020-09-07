@@ -30,7 +30,7 @@ RELEASE_NAME="continuous"
 RELEASE_TITLE="Continuous build"
 is_prerelease="true"
 
-echo "Not running on Travis CI"
+REPO_SLUG="$GITHUB_REPOSITORY"
 if [ -z "$REPO_SLUG" ] ; then
 read -r -p "Repo Slug (GitHub and Travis CI username/reponame): " REPO_SLUG
 fi
@@ -58,90 +58,90 @@ echo "release_url: $release_url"
 target_commit_sha=$(echo "$release_infos" | grep '"target_commitish":' | head -n 1 | cut -d '"' -f 4 | cut -d '{' -f 1)
 echo "target_commit_sha: $target_commit_sha"
 
-if [ "$TRAVIS_COMMIT" != "$target_commit_sha" ] ; then
-  echo "TRAVIS_COMMIT != target_commit_sha, hence deleting $RELEASE_NAME..."
+# if [ "$TRAVIS_COMMIT" != "$target_commit_sha" ] ; then
+#   echo "TRAVIS_COMMIT != target_commit_sha, hence deleting $RELEASE_NAME..."
 
-  if [ ! -z "$release_id" ]; then
-    delete_url="https://api.github.com/repos/$REPO_SLUG/releases/$release_id"
-    echo "Delete the release..."
-    echo "delete_url: $delete_url"
-    curl -XDELETE \
-        --header "Authorization: token ${GITHUB_TOKEN}" \
-        "${delete_url}"
-  fi
+#   if [ ! -z "$release_id" ]; then
+#     delete_url="https://api.github.com/repos/$REPO_SLUG/releases/$release_id"
+#     echo "Delete the release..."
+#     echo "delete_url: $delete_url"
+#     curl -XDELETE \
+#         --header "Authorization: token ${GITHUB_TOKEN}" \
+#         "${delete_url}"
+#   fi
 
-  # echo "Checking if release with the same name is still there..."
-  # echo "release_url: $release_url"
-  # curl -XGET --header "Authorization: token ${GITHUB_TOKEN}" \
-  #     "$release_url"
+#   # echo "Checking if release with the same name is still there..."
+#   # echo "release_url: $release_url"
+#   # curl -XGET --header "Authorization: token ${GITHUB_TOKEN}" \
+#   #     "$release_url"
 
-  if [ "$RELEASE_NAME" == "continuous" ] ; then
-    # if this is a continuous build tag, then delete the old tag
-    # in preparation for the new release
-    echo "Delete the tag..."
-    delete_url="https://api.github.com/repos/$REPO_SLUG/git/refs/tags/$RELEASE_NAME"
-    echo "delete_url: $delete_url"
-    curl -XDELETE \
-        --header "Authorization: token ${GITHUB_TOKEN}" \
-        "${delete_url}"
-  fi
+#   if [ "$RELEASE_NAME" == "continuous" ] ; then
+#     # if this is a continuous build tag, then delete the old tag
+#     # in preparation for the new release
+#     echo "Delete the tag..."
+#     delete_url="https://api.github.com/repos/$REPO_SLUG/git/refs/tags/$RELEASE_NAME"
+#     echo "delete_url: $delete_url"
+#     curl -XDELETE \
+#         --header "Authorization: token ${GITHUB_TOKEN}" \
+#         "${delete_url}"
+#   fi
 
-  echo "Create release..."
+#   echo "Create release..."
 
-  if [ -z "$TRAVIS_BRANCH" ] ; then
-    TRAVIS_BRANCH="master"
-  fi
+#   if [ -z "$TRAVIS_BRANCH" ] ; then
+#     TRAVIS_BRANCH="master"
+#   fi
 
-  if [ ! -z "$TRAVIS_JOB_ID" ] ; then
-    if [ -z "${UPLOADTOOL_BODY+x}" ] ; then
-      BODY="Travis CI build log: ${TRAVIS_BUILD_WEB_URL}"
-    else
-      BODY="$UPLOADTOOL_BODY"
-    fi
-  else
-    BODY="$UPLOADTOOL_BODY"
-  fi
+#   if [ ! -z "$TRAVIS_JOB_ID" ] ; then
+#     if [ -z "${UPLOADTOOL_BODY+x}" ] ; then
+#       BODY="Travis CI build log: ${TRAVIS_BUILD_WEB_URL}"
+#     else
+#       BODY="$UPLOADTOOL_BODY"
+#     fi
+#   else
+#     BODY="$UPLOADTOOL_BODY"
+#   fi
 
-  release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
-       --data '{"tag_name": "'"$RELEASE_NAME"'","target_commitish": "'"$TRAVIS_COMMIT"'","name": "'"$RELEASE_TITLE"'","body": "'"$BODY"'","draft": false,"prerelease": '$is_prerelease'}' "https://api.github.com/repos/$REPO_SLUG/releases")
+#   release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
+#        --data '{"tag_name": "'"$RELEASE_NAME"'","target_commitish": "'"$TRAVIS_COMMIT"'","name": "'"$RELEASE_TITLE"'","body": "'"$BODY"'","draft": false,"prerelease": '$is_prerelease'}' "https://api.github.com/repos/$REPO_SLUG/releases")
 
-  echo "$release_infos"
+#   echo "$release_infos"
 
-  unset upload_url
-  upload_url=$(echo "$release_infos" | grep '"upload_url":' | head -n 1 | cut -d '"' -f 4 | cut -d '{' -f 1)
-  echo "upload_url: $upload_url"
+#   unset upload_url
+#   upload_url=$(echo "$release_infos" | grep '"upload_url":' | head -n 1 | cut -d '"' -f 4 | cut -d '{' -f 1)
+#   echo "upload_url: $upload_url"
 
-  unset release_url
-  release_url=$(echo "$release_infos" | grep '"url":' | head -n 1 | cut -d '"' -f 4 | cut -d '{' -f 1)
-  echo "release_url: $release_url"
+#   unset release_url
+#   release_url=$(echo "$release_infos" | grep '"url":' | head -n 1 | cut -d '"' -f 4 | cut -d '{' -f 1)
+#   echo "release_url: $release_url"
 
-fi # if [ "$TRAVIS_COMMIT" != "$tag_sha" ]
+# fi # if [ "$TRAVIS_COMMIT" != "$tag_sha" ]
 
-if [ -z "$release_url" ] ; then
-	echo "Cannot figure out the release URL for $RELEASE_NAME"
-	exit 1
-fi
+# if [ -z "$release_url" ] ; then
+# 	echo "Cannot figure out the release URL for $RELEASE_NAME"
+# 	exit 1
+# fi
 
-echo "Upload binaries to the release..."
+# echo "Upload binaries to the release..."
 
-for FILE in "$@" ; do
-  FULLNAME="${FILE}"
-  BASENAME="$(basename "${FILE}")"
-  curl -H "Authorization: token ${GITHUB_TOKEN}" \
-       -H "Accept: application/vnd.github.manifold-preview" \
-       -H "Content-Type: application/octet-stream" \
-       --data-binary @$FULLNAME \
-       "$upload_url?name=$BASENAME"
-  echo ""
-done
+# for FILE in "$@" ; do
+#   FULLNAME="${FILE}"
+#   BASENAME="$(basename "${FILE}")"
+#   curl -H "Authorization: token ${GITHUB_TOKEN}" \
+#        -H "Accept: application/vnd.github.manifold-preview" \
+#        -H "Content-Type: application/octet-stream" \
+#        --data-binary @$FULLNAME \
+#        "$upload_url?name=$BASENAME"
+#   echo ""
+# done
 
-$shatool "$@"
+# $shatool "$@"
 
-if [ "$TRAVIS_COMMIT" != "$tag_sha" ] ; then
-  echo "Publish the release..."
+# if [ "$TRAVIS_COMMIT" != "$tag_sha" ] ; then
+#   echo "Publish the release..."
 
-  release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
-       --data '{"draft": false}' "$release_url")
+#   release_infos=$(curl -H "Authorization: token ${GITHUB_TOKEN}" \
+#        --data '{"draft": false}' "$release_url")
 
-  echo "$release_infos"
-fi # if [ "$TRAVIS_COMMIT" != "$tag_sha" ]
+#   echo "$release_infos"
+# fi # if [ "$TRAVIS_COMMIT" != "$tag_sha" ]
