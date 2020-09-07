@@ -107,7 +107,7 @@ if [ "$GITHUB_SHA" != "$target_commit_sha" ] ; then
   release_url=$(echo "$release_infos" | grep '"url":' | head -n 1 | cut -d '"' -f 4 | cut -d '{' -f 1)
   echo "release_url: $release_url"
 
-fi # if [ "$GITHUB_SHA" != "$tag_sha" ]
+fi
 
 if [ -z "$release_url" ] ; then
 	echo "Cannot figure out the release URL for $RELEASE_NAME"
